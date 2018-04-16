@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/itchio/butler/comm"
 	"github.com/itchio/wharf/pools"
 	"github.com/itchio/wharf/state"
 	"github.com/itchio/wharf/tlc"
@@ -168,8 +167,7 @@ func Configure(root string, params *ConfigureParams) (*Verdict, error) {
 
 	container, err := tlc.WalkAny(root, &tlc.WalkOpts{Filter: filter})
 	if err != nil {
-		comm.Logf("Could not walk %s: %s", root, err.Error())
-		return verdict, nil
+		return nil, err
 	}
 
 	if pool == nil {
