@@ -2,7 +2,6 @@ package dash_test
 
 import (
 	"path/filepath"
-	"runtime"
 	"testing"
 
 	"github.com/itchio/dash"
@@ -152,10 +151,7 @@ func Test_ConfigureLinux(t *testing.T) {
 
 	fixed, err := dash.FixPermissions(v, fixParams(t))
 	assert.NoError(t, err, "fixes permissions without problems")
-	// on windows it fixes 5 because reasons
-	if runtime.GOOS != "windows" {
-		assert.EqualValues(t, 7, len(fixed), "fixed some files")
-	}
+	assert.EqualValues(t, 8, len(fixed), "fixed some files")
 
 	vcopy := *v
 	(&vcopy).FilterPlatform("linux", "amd64")
