@@ -3,8 +3,8 @@ package dash
 import (
 	"io"
 
-	"github.com/fasterthanlime/spellbook"
-	"github.com/fasterthanlime/wizardry/wizardry/wizutil"
+	"github.com/itchio/spellbook"
+	"github.com/itchio/wizardry/wizardry/wizutil"
 )
 
 func sniffELF(r io.ReadSeeker, size int64) (*Candidate, error) {

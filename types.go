@@ -26,7 +26,7 @@ type Candidate struct {
 	Arch Arch `json:"arch,omitempty"`
 	// Size is the size of the candidate's file, in bytes
 	Size int64 `json:"size"`
-	// Spell contains raw output from <https://github.com/fasterthanlime/wizardry>
+	// Spell contains raw output from <https://github.com/itchio/wizardry>
 	// @optional
 	Spell []string `json:"spell,omitempty"`
 	// WindowsInfo contains information specific to native Windows candidates
