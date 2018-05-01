@@ -52,6 +52,27 @@ func Test_ConfigureWindows(t *testing.T) {
 	assert.EqualValues(t, "launcher.bat", v64.Candidates[0].Path, "batch won")
 }
 
+func Test_ConfigureWindowsIL2CPP(t *testing.T) {
+	root := filepath.Join("testdata", "windows-il2cpp")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
+
+	v32 := *v
+	(&v32).FilterPlatform("windows", "386")
+
+	assert.EqualValues(t, 1, len(v32.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "game.exe", v32.Candidates[0].Path, "game won")
+
+	v64 := *v
+	(&v64).FilterPlatform("windows", "amd64")
+
+	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "game.exe", v64.Candidates[0].Path, "game won")
+}
+
 func Test_ConfigureWindowsHtml(t *testing.T) {
 	root := filepath.Join("testdata", "windows-html")
 
