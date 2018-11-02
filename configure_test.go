@@ -172,7 +172,7 @@ func Test_ConfigureLinux(t *testing.T) {
 
 	fixed, err := dash.FixPermissions(v, fixParams(t))
 	assert.NoError(t, err, "fixes permissions without problems")
-	assert.EqualValues(t, 8, len(fixed), "fixed some files")
+	assert.EqualValues(t, 5, len(fixed), "fixed some files")
 
 	vcopy := *v
 	(&vcopy).FilterPlatform("linux", "amd64")
