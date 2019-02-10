@@ -168,7 +168,7 @@ func Test_ConfigureLinux(t *testing.T) {
 
 	v, err := dash.Configure(root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
-	assert.EqualValues(t, 8, len(v.Candidates), "finds all candidates on first walk")
+	assert.EqualValues(t, 9, len(v.Candidates), "finds all candidates on first walk")
 
 	fixed, err := dash.FixPermissions(v, fixParams(t))
 	assert.NoError(t, err, "fixes permissions without problems")
