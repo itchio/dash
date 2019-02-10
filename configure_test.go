@@ -168,7 +168,7 @@ func Test_ConfigureLinux(t *testing.T) {
 
 	v, err := dash.Configure(root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
-	assert.EqualValues(t, 9, len(v.Candidates), "finds all candidates on first walk")
+	assert.EqualValues(t, 5, len(v.Candidates), "finds all candidates on first walk")
 
 	fixed, err := dash.FixPermissions(v, fixParams(t))
 	assert.NoError(t, err, "fixes permissions without problems")
@@ -179,6 +179,24 @@ func Test_ConfigureLinux(t *testing.T) {
 
 	assert.EqualValues(t, 1, len(vcopy.Candidates), "only one candidate left after filtering")
 	assert.EqualValues(t, "OpenHexagon", vcopy.Candidates[0].Path, "launcher script wins")
+}
+
+func Test_ConfigureLinuxLibs(t *testing.T) {
+	root := filepath.Join("testdata", "linux-libs")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+	assert.EqualValues(t, 1, len(v.Candidates), "finds all candidates on first walk")
+
+	fixed, err := dash.FixPermissions(v, fixParams(t))
+	assert.NoError(t, err, "fixes permissions without problems")
+	assert.EqualValues(t, 1, len(fixed), "fixed some files")
+
+	vcopy := *v
+	(&vcopy).FilterPlatform("linux", "amd64")
+
+	assert.EqualValues(t, 1, len(vcopy.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "game", vcopy.Candidates[0].Path, "binary wins")
 }
 
 func Test_ConfigureLinuxDualArch(t *testing.T) {
@@ -282,7 +300,7 @@ func Test_ConfigureBlacklist(t *testing.T) {
 
 	v, err := dash.Configure(root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
-	assert.EqualValues(t, 4, len(v.Candidates), "finds all candidates on first walk")
+	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
 
 	vcopy := *v
 	(&vcopy).FilterPlatform("linux", "amd64")
