@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/itchio/dash"
-	"github.com/itchio/wharf/state"
+	"github.com/itchio/headway/state"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/itchio/httpkit/progress"
+	"github.com/itchio/headway/united"
 )
 
 func (v *Verdict) String() string {
 	var lines []string
 	lines = append(lines, fmt.Sprintf(`| %s %s`,
-		progress.FormatBytes(v.TotalSize),
+		united.FormatBytes(v.TotalSize),
 		v.BasePath))
 
 	for _, candidate := range v.Candidates {
@@ -23,7 +23,7 @@ func (v *Verdict) String() string {
 
 func (c *Candidate) String() string {
 	line := fmt.Sprintf(`|-- %s %s %s-%s`,
-		progress.FormatBytes(c.Size),
+		united.FormatBytes(c.Size),
 		c.Path,
 		c.Flavor,
 		c.Arch,

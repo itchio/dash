@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/itchio/wharf/pools"
-	"github.com/itchio/wharf/state"
 	"github.com/itchio/wharf/tlc"
 	"github.com/itchio/wharf/wsync"
+	"github.com/itchio/headway/state"
 	"github.com/pkg/errors"
 )
 
