@@ -20,25 +20,33 @@ package dash
 // TL;DR - an incomplete whitelist means we miss the thing we need to launch and NOTHING works.
 // An incomplete blacklist just slows us down a little, and can always be completed later.
 var fileExtBlacklist map[string]struct{} = map[string]struct{}{
-	".bmp":  struct{}{},
-	".tga":  struct{}{},
+	// images
+	".atf":  struct{}{}, // adobe texture format
+	".xcf":  struct{}{}, // gimp
+	".psd":  struct{}{}, // photoshop
+	".ico":  struct{}{}, // windows icons
+	".icns": struct{}{}, // macOS icons
+	".bmp":  struct{}{}, // bitmaps
+	".tga":  struct{}{}, // targa
 	".png":  struct{}{},
 	".gif":  struct{}{},
 	".jpg":  struct{}{},
 	".jpeg": struct{}{},
 
-	// electron bundles
-	".asar": struct{}{},
+	".asar": struct{}{}, // electron bundles
 
 	// audio
 	".ogg": struct{}{},
 	".wav": struct{}{},
 	".mp3": struct{}{},
+	".vox": struct{}{}, // voice something?
+	".bnk": struct{}{}, // sound banks?
 
 	// video
-	".mp4": struct{}{},
-	".mpg": struct{}{},
-	".avi": struct{}{},
+	".mp4":  struct{}{},
+	".mpg":  struct{}{},
+	".avi":  struct{}{},
+	".aspx": struct{}{},
 
 	// source files
 	".tsx":  struct{}{},
@@ -46,7 +54,6 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".jsx":  struct{}{},
 	".js":   struct{}{},
 	".is":   struct{}{},
-	".py":   struct{}{},
 	".rb":   struct{}{},
 	".go":   struct{}{},
 	".c":    struct{}{},
@@ -55,20 +62,54 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".cxx":  struct{}{},
 	".cpp":  struct{}{},
 	".moon": struct{}{},
+	".hx":   struct{}{},
+	".vbs":  struct{}{},
+	".pxi":  struct{}{},
+
+	// python garbo
+	".py":    struct{}{},
+	".pyo":   struct{}{},
+	".pyd":   struct{}{},
+	".pyx":   struct{}{},
+	".rpy":   struct{}{},
+	".rpyc":  struct{}{},
+	".rpym":  struct{}{},
+	".rpymc": struct{}{},
+	".egg":   struct{}{},
 
 	// structured data
 	".json": struct{}{},
 	".xml":  struct{}{},
+	".csv":  struct{}{},
+
+	// unknown
+	".pck":      struct{}{},
+	".assets":   struct{}{},
+	".asset":    struct{}{},
+	".sav":      struct{}{},
+	".wem":      struct{}{},
+	".browser":  struct{}{},
+	".resource": struct{}{},
+	".ress":     struct{}{},
+	".chr":      struct{}{},
+	".rpa":      struct{}{},
+	".pxd":      struct{}{},
+
+	// debug symbols
+	".pdb": struct{}{},
+	".mdb": struct{}{},
 
 	// UE4 assets
 	".pak": struct{}{},
 
 	// libraries
 	".dll":   struct{}{},
+	".ndll":  struct{}{}, // Haxe/Neko stuff
 	".so":    struct{}{},
 	".dylib": struct{}{},
 
 	// fonts
+	".fnt":        struct{}{},
 	".otf":        struct{}{},
 	".ttf":        struct{}{},
 	".packedfont": struct{}{},
@@ -83,6 +124,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 
 	// macOS crap
 	".ds_store": struct{}{},
+	".plist":    struct{}{},
 
 	// databases
 	".db":     struct{}{},
