@@ -149,6 +149,10 @@ type ConfigureParams struct {
 func Configure(root string, params ConfigureParams) (*Verdict, error) {
 	consumer := params.Consumer
 
+	if params.Stats != nil {
+		params.Stats.SniffsByExt = make(map[string]int)
+	}
+
 	filter := params.Filter
 	if filter == nil {
 		filter = func(fi os.FileInfo) bool {
