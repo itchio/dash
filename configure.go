@@ -169,11 +169,9 @@ func Configure(root string, params *ConfigureParams) (*Verdict, error) {
 		return nil, err
 	}
 
-	if pool == nil {
-		pool, err = pools.New(container, root)
-		if err != nil {
-			return nil, errors.Wrap(err, "creating pool to configure folder")
-		}
+	pool, err = pools.New(container, root)
+	if err != nil {
+		return nil, errors.Wrap(err, "creating pool to configure folder")
 	}
 
 	defer pool.Close()
