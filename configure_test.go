@@ -10,12 +10,13 @@ import (
 )
 
 func makeConsumer(t *testing.T) *state.Consumer {
-	return &state.Consumer{
+	consumer := &state.Consumer{
 		OnMessage: func(lvl string, msg string) {
 			t.Helper()
 			t.Logf("[%s] %s", lvl, msg)
 		},
 	}
+	return consumer
 }
 
 func configureParams(t *testing.T) *dash.ConfigureParams {

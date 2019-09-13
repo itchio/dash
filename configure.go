@@ -487,7 +487,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		scriptCandidates := selectByFlavor(bestCandidates, FlavorScriptWindows)
 
 		if len(scriptCandidates) == 1 {
-			consumer.Debugf("Found some Windows scripts")
+			consumer.Debugf("Found single windows script (%s)", scriptCandidates[0].Path)
 			v.Candidates = scriptCandidates
 			return v
 		}
@@ -498,7 +498,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		scriptCandidates := selectByFlavor(bestCandidates, FlavorScript)
 
 		if len(scriptCandidates) == 1 {
-			consumer.Debugf("Found single Linux script")
+			consumer.Debugf("Found single Linux script (%s)", scriptCandidates[0].Path)
 			v.Candidates = scriptCandidates
 			return v
 		}
@@ -627,7 +627,6 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		}
 	}
 
-	consumer.Debugf("Sorting %d candidates by biggest first", len(bestCandidates))
 	sort.Stable(&biggestFirst{bestCandidates})
 
 	// score, filter & sort
