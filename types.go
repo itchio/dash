@@ -11,6 +11,11 @@ type Verdict struct {
 	Candidates []*Candidate `json:"candidates"`
 }
 
+type VerdictStats struct {
+	NumSniffs int
+	SniffsByExt map[string]int
+}
+
 // A Candidate is a potentially interesting launch target, be it
 // a native executable, a Java or Love2D bundle, an HTML index, etc.
 type Candidate struct {

@@ -141,14 +141,12 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 type ConfigureParams struct {
 	Consumer *state.Consumer
 	Filter   tlc.FilterFunc
+	Stats    *VerdictStats
 }
 
 // Configure walks a directory and finds potential launch candidates,
 // grouped together into a verdict.
-func Configure(root string, params *ConfigureParams) (*Verdict, error) {
-	if params == nil {
-		return nil, errors.New("missing params")
-	}
+func Configure(root string, params ConfigureParams) (*Verdict, error) {
 	consumer := params.Consumer
 
 	filter := params.Filter
@@ -209,15 +207,23 @@ func Configure(root string, params *ConfigureParams) (*Verdict, error) {
 
 	for fileIndex, f := range container.Files {
 		verdict.TotalSize += f.Size
+		ext := strings.ToLower(filepath.Ext(f.Path))
 
-		res, err := sniffPoolEntry(pool, int64(fileIndex), f)
-		if err != nil {
-			return nil, errors.Wrap(err, "sniffing pool entry")
-		}
+		if _, blacklisted := fileExtBlacklist[ext]; !blacklisted {
+			if params.Stats != nil {
+				params.Stats.NumSniffs++
+				params.Stats.SniffsByExt[ext] = params.Stats.SniffsByExt[ext] + 1
+			}
 
-		if res != nil {
-			res.Mode = f.Mode
-			candidates = append(candidates, res)
+			res, err := sniffPoolEntry(pool, int64(fileIndex), f)
+			if err != nil {
+				return nil, errors.Wrap(err, "sniffing pool entry")
+			}
+
+			if res != nil {
+				res.Mode = f.Mode
+				candidates = append(candidates, res)
+			}
 		}
 	}
 
@@ -266,11 +272,7 @@ type FixPermissionsParams struct {
 
 // FixPermissions makes sure all ELF executables, COFF executables,
 // and scripts have the executable bit set
-func FixPermissions(v *Verdict, params *FixPermissionsParams) ([]string, error) {
-	if params == nil {
-		return nil, errors.New("missing params")
-	}
-
+func FixPermissions(v *Verdict, params FixPermissionsParams) ([]string, error) {
 	consumer := params.Consumer
 
 	var fixed []string

@@ -19,14 +19,14 @@ func makeConsumer(t *testing.T) *state.Consumer {
 	return consumer
 }
 
-func configureParams(t *testing.T) *dash.ConfigureParams {
-	return &dash.ConfigureParams{
+func configureParams(t *testing.T) dash.ConfigureParams {
+	return dash.ConfigureParams{
 		Consumer: makeConsumer(t),
 	}
 }
 
-func fixParams(t *testing.T) *dash.FixPermissionsParams {
-	return &dash.FixPermissionsParams{
+func fixParams(t *testing.T) dash.FixPermissionsParams {
+	return dash.FixPermissionsParams{
 		Consumer: makeConsumer(t),
 		DryRun:   true,
 	}
@@ -208,28 +208,6 @@ func Test_ConfigureLinuxDualArch(t *testing.T) {
 
 	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
 	assert.EqualValues(t, "Game.x86_64", v64.Candidates[0].Path, "launcher script wins")
-}
-
-func Test_ConfigureLinuxJarFallback(t *testing.T) {
-	root := filepath.Join("testdata", "linux-jar-fallback")
-
-	v, err := dash.Configure(root, configureParams(t))
-	assert.NoError(t, err, "walks without problems")
-	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
-
-	fixed, err := dash.FixPermissions(v, fixParams(t))
-	assert.NoError(t, err, "fixes permissions without problems")
-	assert.EqualValues(t, 1, len(fixed), "fixed some files")
-
-	v32 := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "386"})
-
-	assert.EqualValues(t, 1, len(v32.Candidates), "only one candidate left after filtering")
-	assert.EqualValues(t, "binary", v32.Candidates[0].Path, "launcher script wins")
-
-	v64 := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
-
-	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
-	assert.EqualValues(t, "hiddenjar.dat", v64.Candidates[0].Path, "launcher script wins")
 }
 
 func Test_ConfigureHtmlMany(t *testing.T) {
