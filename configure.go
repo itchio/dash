@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 	"github.com/itchio/lake"
 	"github.com/itchio/lake/pools"
 	"github.com/itchio/lake/tlc"
+	"github.com/itchio/pelican"
 	"github.com/pkg/errors"
 )
 
@@ -152,10 +154,7 @@ func Configure(root string, params *ConfigureParams) (*Verdict, error) {
 	filter := params.Filter
 	if filter == nil {
 		filter = func(fi os.FileInfo) bool {
-			if fi.Name() == ".itch" {
-				return false
-			}
-			return true
+			return fi.Name() != ".itch"
 		}
 	}
 
@@ -284,7 +283,7 @@ func FixPermissions(v *Verdict, params *FixPermissionsParams) ([]string, error) 
 			fullPath := filepath.Join(v.BasePath, c.Path)
 
 			if c.Mode&0100 == 0 {
-				consumer.Logf("Fixing permissions for %s", c.Path)
+				consumer.Debugf("Adding missing executable bit for (%s)/(%s)", filepath.Base(v.BasePath), c.Path)
 
 				fixed = append(fixed, c.Path)
 				if !params.DryRun {
@@ -356,12 +355,15 @@ type Penalty struct {
 }
 
 var blacklist = []BlacklistEntry{
+	// Penalties
 	{regexp.MustCompile(`(?i)unins.*\.exe$`), Penalty{PenaltyScore, 50}},
 	{regexp.MustCompile(`(?i)kick\.bin$`), Penalty{PenaltyScore, 50}},
 	{regexp.MustCompile(`(?i)\.vshost\.exe$`), Penalty{PenaltyScore, 50}},
 	{regexp.MustCompile(`(?i)nacl_helper`), Penalty{PenaltyScore, 20}},
 	{regexp.MustCompile(`(?i)nwjc\.exe$`), Penalty{PenaltyScore, 20}},
 	{regexp.MustCompile(`(?i)flixel\.exe$`), Penalty{PenaltyScore, 20}},
+
+	// Excludes
 	{regexp.MustCompile(`(?i)\.(so|dylib)$`), Penalty{PenaltyExclude, 0}},
 	{regexp.MustCompile(`(?i)dxwebsetup\.exe$`), Penalty{PenaltyExclude, 0}},
 	{regexp.MustCompile(`(?i)vcredist.*\.exe$`), Penalty{PenaltyExclude, 0}},
@@ -373,7 +375,31 @@ type ScoredCandidate struct {
 	score     int64
 }
 
-func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
+type FilterParams struct {
+	OS   string
+	Arch string
+}
+
+// Filter candidates by OS and/or Arch
+// OS and Arch may be empty strings.
+//
+// Returns a copy of this Verdict.
+func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
+	osFilter := params.OS
+	archFilter := params.Arch
+
+	hasOS := func(os string) bool {
+		return osFilter != "" && osFilter == os
+	}
+	excludesOS := func(os string) bool {
+		return osFilter != "" && osFilter != os
+	}
+	hasArch := func(arch string) bool {
+		return archFilter != "" && archFilter == arch
+	}
+
+	consumer.Debugf("Filtering %d candidates to os (%s), arch (%s)", len(v.Candidates), osFilter, archFilter)
+
 	var compatibleCandidates []*Candidate
 
 	// exclude things we can't run at all
@@ -382,19 +408,23 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 
 		switch c.Flavor {
 		case FlavorNativeLinux:
-			if osFilter != "linux" {
+			if excludesOS("linux") {
+				consumer.Debugf("Excluding (%s) - linux native, os filter is (%s)", c.Path, osFilter)
 				keep = false
 			}
 
-			if archFilter == "386" && c.Arch != Arch386 {
+			if hasArch("386") && (c.Arch != "" && c.Arch != Arch386) {
+				consumer.Debugf("Excluding (%s) - not 32-bit, but arch filter is (%s)", c.Path, archFilter)
 				keep = false
 			}
 		case FlavorNativeWindows:
-			if osFilter != "windows" {
+			if excludesOS("windows") {
+				consumer.Debugf("Excluding (%s) - windows native, os filter is (%s)", c.Path, osFilter)
 				keep = false
 			}
 		case FlavorNativeMacos:
-			if osFilter != "darwin" {
+			if excludesOS("darwin") {
+				consumer.Debugf("Excluding (%s) - darwin (macOS) native, os filter is (%s)", c.Path, osFilter)
 				keep = false
 			}
 		}
@@ -403,12 +433,11 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 			compatibleCandidates = append(compatibleCandidates, c)
 		}
 	}
-
 	bestCandidates := compatibleCandidates
 
 	if len(bestCandidates) == 1 {
 		v.Candidates = bestCandidates
-		return
+		return v
 	}
 
 	// now keep all candidates of the lowest depth
@@ -420,12 +449,16 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 	}
 
 	bestCandidates = selectByFunc(compatibleCandidates, func(c *Candidate) bool {
-		return c.Depth == lowestDepth
+		pass := c.Depth == lowestDepth
+		if !pass {
+			consumer.Debugf("Excluding (%s) - depth %d > lowest depth %d", c.Path, c.Depth, lowestDepth)
+		}
+		return pass
 	})
 
 	if len(bestCandidates) == 1 {
 		v.Candidates = bestCandidates
-		return
+		return v
 	}
 
 	// love always wins, in the end
@@ -433,84 +466,133 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 		loveCandidates := selectByFlavor(bestCandidates, FlavorLove)
 
 		if len(loveCandidates) == 1 {
+			consumer.Debugf("Found single .love candidate")
 			v.Candidates = loveCandidates
-			return
+			return v
 		}
 	}
 
 	// on macOS, app bundles win
-	if osFilter == "darwin" {
+	if hasOS("darwin") {
 		appCandidates := selectByFlavor(bestCandidates, FlavorAppMacos)
 
 		if len(appCandidates) > 0 {
+			consumer.Debugf("Found some .app bundles")
 			bestCandidates = appCandidates
 		}
 	}
 
 	// on windows, scripts win
-	if osFilter == "windows" {
+	if hasOS("windows") {
 		scriptCandidates := selectByFlavor(bestCandidates, FlavorScriptWindows)
 
 		if len(scriptCandidates) == 1 {
+			consumer.Debugf("Found some Windows scripts")
 			v.Candidates = scriptCandidates
-			return
+			return v
 		}
 	}
 
 	// on linux, scripts win
-	if osFilter == "linux" {
+	if hasOS("linux") {
 		scriptCandidates := selectByFlavor(bestCandidates, FlavorScript)
 
 		if len(scriptCandidates) == 1 {
+			consumer.Debugf("Found single Linux script")
 			v.Candidates = scriptCandidates
-			return
+			return v
 		}
 	}
 
-	if osFilter == "linux" && archFilter == "amd64" {
+	if hasOS("linux") && hasArch("amd64") {
+		consumer.Debugf("Oh boy, we're on 64-bit Linux, let's filter some stuff")
+
 		linuxCandidates := selectByFlavor(bestCandidates, FlavorNativeLinux)
 		linux64Candidates := selectByArch(linuxCandidates, ArchAmd64)
 
 		if len(linux64Candidates) > 0 {
+			consumer.Debugf("Found some native 64-bit Linux candidates, excluding all others")
+
 			// on linux 64, 64-bit binaries win
 			bestCandidates = linux64Candidates
 		} else {
+			consumer.Debugf("No native 64-bit Linux candidates, looking for jars")
+
 			// if no 64-bit binaries, jars win
 			jarCandidates := selectByFlavor(bestCandidates, FlavorJar)
 			if len(jarCandidates) > 0 {
-				v.Candidates = jarCandidates
-				return
-			}
-		}
+				consumer.Debugf("Found some jar candidates, excluding all others")
 
-		if len(bestCandidates) == 1 {
-			v.Candidates = bestCandidates
-			return
+				v.Candidates = jarCandidates
+				return v
+			}
 		}
 	}
 
 	// on windows, non-installers win
-	if osFilter == "windows" {
+	if hasOS("windows") {
 		windowsCandidates := selectByFlavor(bestCandidates, FlavorNativeWindows)
 		nonInstallerCandidates := selectByFunc(windowsCandidates, func(c *Candidate) bool {
-			return !(c.WindowsInfo != nil && c.WindowsInfo.InstallerType != "")
+			if c.WindowsInfo != nil && c.WindowsInfo.InstallerType != "" {
+				consumer.Debugf("Excluding (%s) - installer of type (%s)", c.Path, c.WindowsInfo.InstallerType)
+				return false // false means "is an installer"
+			}
+
+			fullTargetPath := filepath.FromSlash(c.Path)
+			f, err := os.Open(filepath.Join(v.BasePath, fullTargetPath))
+			if err != nil {
+				consumer.Warnf("Could not open native windows candidate (%s) for inspection", fullTargetPath)
+				consumer.Warnf("Full error: %#v", err)
+			} else {
+				defer f.Close()
+
+				var peLines []string
+				memConsumer := &state.Consumer{
+					OnMessage: func(lvl string, msg string) {
+						peLines = append(peLines, fmt.Sprintf("pelican> [%s] %s", lvl, msg))
+					},
+				}
+
+				peInfo, err := pelican.Probe(f, &pelican.ProbeParams{
+					Consumer: memConsumer,
+				})
+				if err != nil {
+					consumer.Warnf("Could not probe (%s) with pelican", fullTargetPath)
+					consumer.Warnf("Full error: %#v", err)
+					consumer.Warnf("Full pelican log:\n%s", strings.Join(peLines, "\n"))
+				} else {
+					if peInfo.RequiresElevation() {
+						consumer.Debugf("Excluding (%s) - requires elevation", c.Path)
+						return false // false means "is an installer"
+					}
+
+					if peInfo.AssemblyInfo == nil && HasSuspiciouslySetupLikeName(filepath.Base(c.Path)) {
+						consumer.Debugf("Excluding (%s) - no assembly info + has suspiciously setup-like name", c.Path)
+						return false // false means "is an installer"
+					}
+				}
+			}
+
+			return true // can't tell if installer or not
 		})
 
-		if len(nonInstallerCandidates) > 0 {
-			bestCandidates = nonInstallerCandidates
-		}
+		bestCandidates = nonInstallerCandidates
 
 		if len(bestCandidates) == 1 {
 			v.Candidates = bestCandidates
-			return
+			return v
 		}
 	}
 
 	// on windows, gui executables win
-	if osFilter == "windows" {
+	if hasOS("windows") {
 		windowsCandidates := selectByFlavor(bestCandidates, FlavorNativeWindows)
 		guiCandidates := selectByFunc(windowsCandidates, func(c *Candidate) bool {
-			return c.WindowsInfo != nil && c.WindowsInfo.Gui
+			pass := c.WindowsInfo != nil && c.WindowsInfo.Gui
+			if !pass {
+				consumer.Debugf("Considering (%s) for exclusion - not a GUI executable", c.Path)
+			}
+			return pass
 		})
 
 		if len(guiCandidates) > 0 {
@@ -519,7 +601,7 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 
 		if len(bestCandidates) == 1 {
 			v.Candidates = bestCandidates
-			return
+			return v
 		}
 	}
 
@@ -527,6 +609,7 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 	{
 		htmlCandidates := selectByFlavor(bestCandidates, FlavorHTML)
 		if len(htmlCandidates) > 0 && len(htmlCandidates) < len(bestCandidates) {
+			consumer.Debugf("Has %d HTML candidates, but %d non-HTML candidates - excluding HTML candidates", len(htmlCandidates), len(bestCandidates)-len(htmlCandidates))
 			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
 				return c.Flavor != FlavorHTML
 			})
@@ -537,12 +620,14 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 	{
 		jarCandidates := selectByFlavor(bestCandidates, FlavorJar)
 		if len(jarCandidates) > 0 && len(jarCandidates) < len(bestCandidates) {
+			consumer.Debugf("Has %d JAR candidates, but %d non-JAR candidates - excluding JAR candidates", len(jarCandidates), len(bestCandidates)-len(jarCandidates))
 			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
 				return c.Flavor != FlavorJar
 			})
 		}
 	}
 
+	consumer.Debugf("Sorting %d candidates by biggest first", len(bestCandidates))
 	sort.Stable(&biggestFirst{bestCandidates})
 
 	// score, filter & sort
@@ -552,8 +637,10 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 			if entry.pattern.MatchString(candidate.Path) {
 				switch entry.penalty.kind {
 				case PenaltyScore:
+					consumer.Debugf("Penalizing (%s) - %d score penalty for pattern %q", candidate.Path, entry.penalty.delta, entry.pattern)
 					score -= entry.penalty.delta
 				case PenaltyExclude:
+					consumer.Debugf("0-scoring (%s) - penalty exclude for pattern %q", candidate.Path, entry.pattern)
 					score = 0
 				}
 			}
@@ -567,9 +654,15 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 		scored := computeScore(candidate)
 		if scored.score > 0 {
 			scoredCandidates = append(scoredCandidates, scored)
+		} else {
+			consumer.Debugf("Excluding (%s) - non-positive score %d", candidate.Path, scored.score)
 		}
 	}
 	sort.Stable(&HighestScoreFirst{scoredCandidates})
+	consumer.Debugf("Sorted candidates: ")
+	for _, sc := range scoredCandidates {
+		consumer.Debugf("- [%d] (%s)", sc.score, sc.candidate.Path)
+	}
 
 	var finalCandidates []*Candidate
 	for _, scored := range scoredCandidates {
@@ -577,4 +670,5 @@ func (v *Verdict) FilterPlatform(osFilter string, archFilter string) {
 	}
 
 	v.Candidates = finalCandidates
+	return v
 }
