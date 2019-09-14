@@ -48,6 +48,10 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".avi":  struct{}{},
 	".aspx": struct{}{},
 
+	// levels
+	".lvl": struct{}{},
+	".tmx": struct{}{},
+
 	// source files
 	".tsx":  struct{}{},
 	".ts":   struct{}{},
@@ -94,6 +98,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".chr":      struct{}{},
 	".rpa":      struct{}{},
 	".pxd":      struct{}{},
+	".exr":      struct{}{},
 
 	// debug symbols
 	".pdb": struct{}{},
@@ -115,9 +120,10 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".packedfont": struct{}{},
 
 	// ?? found in opus magnum
-	".cso":  struct{}{},
+	".cso": struct{}{},
+
+	// shaders
 	".glsl": struct{}{},
-	".out":  struct{}{},
 
 	// ffs @queenjazz
 	".roobos": struct{}{},
@@ -132,11 +138,17 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".sqlite": struct{}{},
 
 	// various
-	".txt":    struct{}{},
-	".ini":    struct{}{},
-	".conf":   struct{}{},
-	".config": struct{}{},
-	".cfg":    struct{}{},
-	".dat":    struct{}{},
-	".map":    struct{}{},
+	".txt":      struct{}{},
+	".ini":      struct{}{},
+	".conf":     struct{}{},
+	".config":   struct{}{},
+	".cfg":      struct{}{},
+	".dat":      struct{}{},
+	".map":      struct{}{},
+	".out":      struct{}{},
+	".solution": struct{}{},
+	".info":     struct{}{},
+
+	// flash
+	".swf": struct{}{},
 }
