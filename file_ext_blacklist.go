@@ -33,7 +33,11 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".jpg":  struct{}{},
 	".jpeg": struct{}{},
 
-	".asar": struct{}{}, // electron bundles
+	// electron
+	".asar": struct{}{},
+
+	// adobe air
+	".vch": struct{}{},
 
 	// audio
 	".ogg": struct{}{},
@@ -70,7 +74,22 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".vbs":  struct{}{},
 	".pxi":  struct{}{},
 
-	// python garbo
+	// java stuff?
+	"*.pf":        struct{}{},
+	"*.jfc":       struct{}{},
+	"*.template":  struct{}{},
+	"*.policy":    struct{}{},
+	"*.access":    struct{}{},
+	"*.libraries": struct{}{},
+	"*.jsa":       struct{}{},
+	"*.bfc":       struct{}{},
+	"*.src":       struct{}{},
+	"*.certs":     struct{}{},
+	"*.security":  struct{}{},
+	"*.cpl":       struct{}{},
+	"*.ja":        struct{}{},
+
+	// python stuff
 	".py":    struct{}{},
 	".pyo":   struct{}{},
 	".pyd":   struct{}{},
@@ -82,9 +101,10 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".egg":   struct{}{},
 
 	// structured data
-	".json": struct{}{},
-	".xml":  struct{}{},
-	".csv":  struct{}{},
+	".json":     struct{}{},
+	".xml":      struct{}{},
+	".csv":      struct{}{},
+	".manifest": struct{}{},
 
 	// unknown
 	".pck":      struct{}{},
@@ -104,8 +124,34 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".pdb": struct{}{},
 	".mdb": struct{}{},
 
-	// UE4 assets
-	".pak": struct{}{},
+	// UE4 stuff
+	".pak":      struct{}{},
+	".uasset":   struct{}{},
+	".uplugin":  struct{}{},
+	".uproject": struct{}{},
+	".res":      struct{}{},
+	".brk":      struct{}{},
+	".nrm":      struct{}{},
+	".tps":      struct{}{},
+	".icu":      struct{}{},
+	".cnv":      struct{}{},
+	".cfu":      struct{}{},
+	".locres":   struct{}{},
+	".sse":      struct{}{},
+	".rnt":      struct{}{},
+	".vis":      struct{}{},
+	".ecm":      struct{}{},
+	".rgb":      struct{}{},
+	".taw":      struct{}{},
+	".caw":      struct{}{},
+
+	// source engine
+	".vdf": struct{}{},
+	".bsp": struct{}{}, // maps
+	".vmt": struct{}{}, // valve material type
+	".vmf": struct{}{}, // valve map file
+	".vtf": struct{}{}, // valve texture format
+	".nav": struct{}{}, // nav meshes
 
 	// libraries
 	".dll":   struct{}{},
