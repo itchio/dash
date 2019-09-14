@@ -211,11 +211,10 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	for fileIndex, f := range container.Files {
 		verdict.TotalSize += f.Size
-		ext := strings.ToLower(filepath.Ext(f.Path))
-
-		if _, blacklisted := fileExtBlacklist[ext]; !blacklisted {
+		if !isBlacklistedExt(f.Path) {
 			if params.Stats != nil {
 				params.Stats.NumSniffs++
+				ext := getExt(f.Path)
 				params.Stats.SniffsByExt[ext] = params.Stats.SniffsByExt[ext] + 1
 			}
 

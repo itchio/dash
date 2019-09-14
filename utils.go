@@ -2,6 +2,7 @@ package dash
 
 import (
 	"io"
+	"path/filepath"
 	"strings"
 )
 
@@ -20,6 +21,10 @@ func pathDepth(path string) int {
 
 func hasExt(path string, ext string) bool {
 	return strings.HasSuffix(strings.ToLower(path), ext)
+}
+
+func getExt(path string) string {
+	return strings.ToLower(filepath.Ext(path))
 }
 
 // Adapt an io.ReadSeeker into an io.ReaderAt in the dumbest possible fashion

@@ -1,5 +1,9 @@
 package dash
 
+import (
+	"regexp"
+)
+
 // I know what you're thinking.
 //
 // You're thinking: I love amos and all, but he's being kinda dumb right now -
@@ -75,19 +79,20 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".pxi":  struct{}{},
 
 	// java stuff?
-	".pf":        struct{}{},
-	".jfc":       struct{}{},
-	".template":  struct{}{},
-	".policy":    struct{}{},
-	".access":    struct{}{},
-	".libraries": struct{}{},
-	".jsa":       struct{}{},
-	".bfc":       struct{}{},
-	".src":       struct{}{},
-	".certs":     struct{}{},
-	".security":  struct{}{},
-	".cpl":       struct{}{},
-	".ja":        struct{}{},
+	".pf":         struct{}{},
+	".jfc":        struct{}{},
+	".template":   struct{}{},
+	".policy":     struct{}{},
+	".access":     struct{}{},
+	".libraries":  struct{}{},
+	".jsa":        struct{}{},
+	".bfc":        struct{}{},
+	".src":        struct{}{},
+	".certs":      struct{}{},
+	".security":   struct{}{},
+	".cpl":        struct{}{},
+	".ja":         struct{}{},
+	".properties": struct{}{},
 
 	// python stuff
 	".py":    struct{}{},
@@ -105,6 +110,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".xml":      struct{}{},
 	".csv":      struct{}{},
 	".manifest": struct{}{},
+	".data":     struct{}{},
 
 	// unknown
 	".pck":      struct{}{},
@@ -129,6 +135,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".uasset":   struct{}{},
 	".uplugin":  struct{}{},
 	".uproject": struct{}{},
+	".umap":     struct{}{},
 	".res":      struct{}{},
 	".brk":      struct{}{},
 	".nrm":      struct{}{},
@@ -185,6 +192,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 
 	// various
 	".txt":      struct{}{},
+	".rtf":      struct{}{},
 	".ini":      struct{}{},
 	".conf":     struct{}{},
 	".config":   struct{}{},
@@ -197,4 +205,21 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 
 	// flash
 	".swf": struct{}{},
+}
+
+var soRegexp = regexp.MustCompile(`(?i)\.so(\.[0-9]+)*$`)
+
+// Note: ext must be lower-case, and include the dot,
+// so it could be ".swf", or "" - see the blacklist map definition
+func isBlacklistedExt(name string) bool {
+	if _, ok := fileExtBlacklist[getExt(name)]; ok {
+		return true
+	}
+
+	if soRegexp.MatchString(name) {
+		return true
+	}
+
+	// not blacklisted
+	return false
 }
