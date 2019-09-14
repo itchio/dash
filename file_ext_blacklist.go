@@ -125,6 +125,7 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".rpa":      struct{}{},
 	".pxd":      struct{}{},
 	".exr":      struct{}{},
+	".unityweb": struct{}{},
 
 	// debug symbols
 	".pdb": struct{}{},
@@ -202,6 +203,9 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".out":      struct{}{},
 	".solution": struct{}{},
 	".info":     struct{}{},
+
+	// html
+	".css": struct{}{},
 
 	// flash
 	".swf": struct{}{},
