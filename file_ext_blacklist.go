@@ -44,11 +44,13 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".vch": struct{}{},
 
 	// audio
-	".ogg": struct{}{},
-	".wav": struct{}{},
-	".mp3": struct{}{},
-	".vox": struct{}{}, // voice something?
-	".bnk": struct{}{}, // sound banks?
+	".ogg":       struct{}{},
+	".wav":       struct{}{},
+	".mp3":       struct{}{},
+	".vox":       struct{}{}, // voice something?
+	".bnk":       struct{}{}, // sound banks?
+	".snd":       struct{}{},
+	".bfxrsound": struct{}{},
 
 	// video
 	".mp4":  struct{}{},
