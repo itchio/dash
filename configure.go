@@ -122,10 +122,7 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 		buf[4] == 0xA1 && buf[5] == 0xB1 &&
 		buf[6] == 0x1A && buf[7] == 0xE1 {
 		return &Candidate{
-			Flavor: FlavorNativeWindows,
-			WindowsInfo: &WindowsInfo{
-				InstallerType: WindowsInstallerTypeMsi,
-			},
+			Flavor: FlavorMSI,
 		}, nil
 	}
 

@@ -71,6 +71,8 @@ const (
 	FlavorHTML Flavor = "html"
 	// FlavorLove denotes a love package
 	FlavorLove Flavor = "love"
+	// Microsoft installer packages
+	FlavorMSI Flavor = "msi"
 )
 
 // The architecture of an executable
