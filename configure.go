@@ -406,6 +406,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 	for _, c := range v.Candidates {
 		keep := true
 
+		consumer.Debugf("Reviewing (%s) flavor %v", c.Path, c.Flavor)
 		switch c.Flavor {
 		case FlavorNativeLinux:
 			if excludesOS("linux") {
@@ -422,7 +423,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 				consumer.Debugf("Excluding (%s) - windows native, os filter is (%s)", c.Path, osFilter)
 				keep = false
 			}
-		case FlavorNativeMacos:
+		case FlavorNativeMacos, FlavorAppMacos:
 			if excludesOS("darwin") {
 				consumer.Debugf("Excluding (%s) - darwin (macOS) native, os filter is (%s)", c.Path, osFilter)
 				keep = false
