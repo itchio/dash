@@ -555,7 +555,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 					},
 				}
 
-				peInfo, err := pelican.Probe(f, &pelican.ProbeParams{
+				peInfo, err := pelican.Probe(f, pelican.ProbeParams{
 					Consumer: memConsumer,
 				})
 				if err != nil {
