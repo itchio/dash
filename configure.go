@@ -137,8 +137,11 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 // ConfigureParams controls the behavior of Configure
 type ConfigureParams struct {
 	Consumer *state.Consumer
-	Filter   tlc.FilterFunc
-	Stats    *VerdictStats
+	// filter to use when walking the install folder a nil value will fallback
+	// on lake's presets (not git/hg/svn metadata, no windows/mac metadata, no
+	// .itch folder)
+	Filter tlc.FilterFunc
+	Stats  *VerdictStats
 }
 
 // Configure walks a directory and finds potential launch candidates,
@@ -152,9 +155,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	filter := params.Filter
 	if filter == nil {
-		filter = func(fi os.FileInfo) bool {
-			return fi.Name() != ".itch"
-		}
+		filter = tlc.PresetFilter
 	}
 
 	verdict := &Verdict{
@@ -163,7 +164,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	var pool lake.Pool
 
-	container, err := tlc.WalkAny(root, &tlc.WalkOpts{Filter: filter})
+	container, err := tlc.WalkAny(root, tlc.WalkOpts{Filter: filter})
 	if err != nil {
 		return nil, err
 	}
