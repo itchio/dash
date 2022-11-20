@@ -142,6 +142,20 @@ type ConfigureParams struct {
 	// .itch folder)
 	Filter tlc.FilterFunc
 	Stats  *VerdictStats
+
+	CandidateDetector
+}
+
+type CandidateDetector interface {
+	// Error returned here is treated as critical and will
+	// cancel Configuration.
+	DetectCandidate(pool lake.Pool, fileIndex int64, f *tlc.File) (DetectResult, error)
+}
+
+type DetectResult struct {
+	// Allowed to be nil.
+	Candidate           *Candidate
+	SkipDefaultAnalysis bool
 }
 
 // Configure walks a directory and finds potential launch candidates,
@@ -209,6 +223,18 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	for fileIndex, f := range container.Files {
 		verdict.TotalSize += f.Size
+		if params.CandidateDetector != nil {
+			res, err := params.CandidateDetector.DetectCandidate(pool, int64(fileIndex), f)
+			if err != nil {
+				return nil, errors.Wrap(err, "detect candidate")
+			}
+			if res.Candidate != nil {
+				candidates = append(candidates, res.Candidate)
+			}
+			if res.SkipDefaultAnalysis {
+				continue
+			}
+		}
 		if !isBlacklistedExt(f.Path) {
 			if params.Stats != nil {
 				params.Stats.NumSniffs++
