@@ -47,6 +47,8 @@ type Candidate struct {
 	// JarInfo contains information specific to Java archives (`.jar` files)
 	// @optional
 	JarInfo *JarInfo `json:"jarInfo,omitempty"`
+	// Any other info.
+	Metadata interface{}
 }
 
 // Flavor describes whether we're dealing with a native executables, a Java archive, a love2d bundle, etc.
