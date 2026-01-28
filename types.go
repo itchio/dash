@@ -49,7 +49,7 @@ type Candidate struct {
 	JarInfo *JarInfo `json:"jarInfo,omitempty"`
 	// Any other info.
 	// @optional
-	Metadata interface{} `json:"metadata,omitempty"`
+	Metadata map[string]any `json:"metadata,omitempty"`
 }
 
 // Flavor describes whether we're dealing with a native executables, a Java archive, a love2d bundle, etc.
