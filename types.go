@@ -48,7 +48,8 @@ type Candidate struct {
 	// @optional
 	JarInfo *JarInfo `json:"jarInfo,omitempty"`
 	// Any other info.
-	Metadata interface{}
+	// @optional
+	Metadata interface{} `json:"metadata,omitempty"`
 }
 
 // Flavor describes whether we're dealing with a native executables, a Java archive, a love2d bundle, etc.
