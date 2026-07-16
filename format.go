@@ -29,7 +29,7 @@ func (c *Candidate) String() string {
 		c.Arch,
 	)
 
-	append := func(label string, input interface{}) {
+	append := func(label string, input any) {
 		var values []string
 
 		if input == nil {
@@ -37,7 +37,7 @@ func (c *Candidate) String() string {
 		}
 
 		switch node := input.(type) {
-		case map[string]interface{}:
+		case map[string]any:
 			for k, v := range node {
 				if b, ok := v.(bool); ok {
 					if b {
@@ -63,7 +63,7 @@ func (c *Candidate) String() string {
 		return err.Error()
 	}
 
-	intermediate := make(map[string]interface{})
+	intermediate := make(map[string]any)
 	err = json.Unmarshal(marshalled, &intermediate)
 	if err != nil {
 		return err.Error()

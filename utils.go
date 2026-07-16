@@ -3,16 +3,12 @@ package dash
 import (
 	"io"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
 func spellHas(spell []string, token string) bool {
-	for _, tok := range spell {
-		if tok == token {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(spell, token)
 }
 
 func pathDepth(path string) int {
