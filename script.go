@@ -23,7 +23,14 @@ func sniffScript(r io.ReadSeeker, size int64) (*Candidate, error) {
 		line := s.Text()
 		if len(line) > 2 {
 			// skip over the shebang
-			res.ScriptInfo.Interpreter = strings.TrimSpace(line[2:])
+			interpreter := strings.TrimSpace(line[2:])
+			// a shebang names its interpreter by absolute path; data files
+			// that merely start with "#!" (e.g. RP6502 ROM images start
+			// with "#!RP6502") are not scripts
+			if !strings.HasPrefix(interpreter, "/") {
+				return nil, nil
+			}
+			res.ScriptInfo.Interpreter = interpreter
 		}
 	}
 

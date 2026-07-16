@@ -89,6 +89,58 @@ func Test_ConfigureWindowsHtml(t *testing.T) {
 	assert.EqualValues(t, "game.exe", v64.Candidates[0].Path, "batch won")
 }
 
+func Test_ConfigureWindowsFakeShebang(t *testing.T) {
+	// data files that start with "#!" but don't name an interpreter path
+	// (e.g. RP6502 ROM images) must not be treated as scripts,
+	// see https://github.com/itchio/itch/issues/3468
+	root := filepath.Join("testdata", "windows-fake-shebang")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	assert.EqualValues(t, 1, len(v.Candidates), "only the html file is a candidate")
+
+	v64 := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
+
+	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "index.html", v64.Candidates[0].Path, "html won")
+}
+
+func Test_ConfigureScriptAndHtml(t *testing.T) {
+	root := filepath.Join("testdata", "script-and-html")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
+
+	v64 := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
+
+	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "index.html", v64.Candidates[0].Path, "html won, shebang scripts can't run on windows")
+
+	vlinux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
+
+	assert.EqualValues(t, 1, len(vlinux.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "launch", vlinux.Candidates[0].Path, "script won on linux")
+}
+
+func Test_ConfigureJarAndHtml(t *testing.T) {
+	// filtering for windows must not come up empty just because
+	// none of the candidates are native windows executables
+	root := filepath.Join("testdata", "jar-and-html")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
+
+	v64 := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
+
+	assert.EqualValues(t, 1, len(v64.Candidates), "only one candidate left after filtering")
+	assert.EqualValues(t, "game.jar", v64.Candidates[0].Path, "jar won")
+}
+
 func Test_ConfigureDarwin(t *testing.T) {
 	root := filepath.Join("testdata", "darwin")
 

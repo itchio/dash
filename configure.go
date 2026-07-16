@@ -455,6 +455,12 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 				consumer.Debugf("Excluding (%s) - darwin (macOS) native, os filter is (%s)", c.Path, osFilter)
 				keep = false
 			}
+		case FlavorScript:
+			// shebang scripts run on linux and macOS, but not windows
+			if hasOS("windows") {
+				consumer.Debugf("Excluding (%s) - shebang script, os filter is (%s)", c.Path, osFilter)
+				keep = false
+			}
 		}
 
 		if keep {
@@ -604,7 +610,17 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 			return true // can't tell if installer or not
 		})
 
-		bestCandidates = nonInstallerCandidates
+		if len(nonInstallerCandidates) > 0 {
+			// non-installer native executables beat everything else
+			bestCandidates = nonInstallerCandidates
+		} else if len(windowsCandidates) > 0 && len(windowsCandidates) < len(bestCandidates) {
+			// every native executable is an installer: installers lose
+			// to the remaining candidates
+			consumer.Debugf("All %d native windows candidates are installers, excluding them", len(windowsCandidates))
+			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
+				return c.Flavor != FlavorNativeWindows
+			})
+		}
 
 		if len(bestCandidates) == 1 {
 			v.Candidates = bestCandidates
