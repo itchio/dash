@@ -398,3 +398,21 @@ func Test_ConfigureDarwinArchNested(t *testing.T) {
 	intel := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "amd64"})
 	assert.ElementsMatch(t, []string{"intel/Intel.app", "intel/Other.app"}, paths(intel), "deeper intel bundles survive on intel")
 }
+
+func Test_ConfigureLinuxArch(t *testing.T) {
+	// the ELF class only says 64-bit, the machine field says which
+	root := filepath.Join("testdata", "linux-arch")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	byPath := make(map[string]dash.Arch)
+	for _, c := range v.Candidates {
+		byPath[c.Path] = c.Arch
+	}
+	assert.EqualValues(t, map[string]dash.Arch{
+		"game.aarch64": dash.ArchArm64,
+		"game.x86_64":  dash.ArchAmd64,
+		"game.x86":     dash.Arch386,
+	}, byPath)
+}

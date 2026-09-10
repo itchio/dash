@@ -1,6 +1,8 @@
 package dash
 
 import (
+	"debug/elf"
+	"encoding/binary"
 	"io"
 	"regexp"
 
@@ -16,7 +18,8 @@ func sniffELF(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
 		return nil, nil
 	}
 
-	sr := wizutil.NewSliceReader(&readerAtFromSeeker{r}, 0, size)
+	ra := &readerAtFromSeeker{r}
+	sr := wizutil.NewSliceReader(ra, 0, size)
 	spell := spellbook.Identify(sr, 0)
 
 	if !spellHas(spell, "ELF") {
@@ -33,11 +36,29 @@ func sniffELF(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
 		Spell:  spell,
 	}
 
-	if spellHas(spell, "32-bit") {
-		result.Arch = Arch386
-	} else if spellHas(spell, "64-bit") {
-		result.Arch = ArchAmd64
+	var hdr [20]byte
+	if n, _ := ra.ReadAt(hdr[:], 0); n == len(hdr) {
+		result.Arch = elfHeaderArch(hdr[:])
 	}
 
 	return result, nil
+}
+
+// elfHeaderArch reads e_machine, honoring the byte order declared in
+// e_ident. The "64-bit" class token is not enough: aarch64 is 64-bit too.
+func elfHeaderArch(hdr []byte) Arch {
+	var order binary.ByteOrder = binary.LittleEndian
+	if hdr[elf.EI_DATA] == byte(elf.ELFDATA2MSB) {
+		order = binary.BigEndian
+	}
+	switch elf.Machine(order.Uint16(hdr[18:20])) {
+	case elf.EM_386:
+		return Arch386
+	case elf.EM_X86_64:
+		return ArchAmd64
+	case elf.EM_AARCH64:
+		return ArchArm64
+	default:
+		return ""
+	}
 }
