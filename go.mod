@@ -1,16 +1,17 @@
 module github.com/itchio/dash
 
-go 1.21
+go 1.23
 
 require (
 	github.com/itchio/arkive v0.0.0-20200301155608-aeded25a0494
 	github.com/itchio/headway v0.0.0-20200301160421-e15721f23905
 	github.com/itchio/lake v0.0.0-20200305150023-cc4284ec2b2a
 	github.com/itchio/pelican v0.0.0-20200305192721-308c3772290a
-	github.com/itchio/spellbook v0.0.0-20200301161431-a4bdbea6b725
-	github.com/itchio/wizardry v0.0.0-20200301161332-e8c8c4a5a488
+	github.com/itchio/spellbook v0.0.0-20260223022740-4f847d058148
+	github.com/itchio/wizardry v0.0.0-20260222230103-ec734b409e9c
 	github.com/pkg/errors v0.9.1
-	github.com/stretchr/testify v1.5.1
+	github.com/stretchr/testify v1.11.1
+	howett.net/plist v1.0.1
 )
 
 require (
@@ -41,5 +42,5 @@ require (
 	golang.org/x/net v0.0.0-20200301022130-244492dfa37a // indirect
 	golang.org/x/sys v0.0.0-20200301153931-2f85c7ec1e52 // indirect
 	golang.org/x/text v0.3.2 // indirect
-	gopkg.in/yaml.v2 v2.2.8 // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

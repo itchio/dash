@@ -92,9 +92,7 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 	// intel Mach-O executables start with 0xCEFAEDFE or 0xCFFAEDFE
 	// (old PowerPC Mach-O executables started with 0xFEEDFACE)
 	if (buf[0] == 0xCE || buf[0] == 0xCF) && buf[1] == 0xFA && buf[2] == 0xED && buf[3] == 0xFE {
-		return &Candidate{
-			Flavor: FlavorNativeMacos,
-		}, nil
+		return sniffMachO(r, size)
 	}
 
 	// Mach-O universal binaries start with 0xCAFEBABE
@@ -192,20 +190,24 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	var candidates = make([]*Candidate, 0)
 
+	// lowercased path of each .app bundle's main executable, when its
+	// Info.plist declares one
+	bundleExecutables := make(map[*Candidate]string)
+
 	for _, d := range container.Dirs {
 		lowerPath := strings.ToLower(d.Path)
 		if strings.HasSuffix(lowerPath, ".app") {
 			plistPath := lowerPath + "/contents/info.plist"
 
-			plistFound := false
-			for _, f := range container.Files {
+			plistIndex := -1
+			for fileIndex, f := range container.Files {
 				if strings.ToLower(f.Path) == plistPath {
-					plistFound = true
+					plistIndex = fileIndex
 					break
 				}
 			}
 
-			if !plistFound {
+			if plistIndex < 0 {
 				consumer.Logf("Found app bundle without an Info.plist: %s", d.Path)
 				continue
 			}
@@ -218,6 +220,13 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 			}
 			res.Depth = pathDepth(res.Path)
 			candidates = append(candidates, res)
+
+			exe, err := readBundleExecutable(pool, int64(plistIndex))
+			if err != nil {
+				consumer.Logf("Could not read Info.plist of %s: %s", d.Path, err.Error())
+			} else if exe != "" {
+				bundleExecutables[res] = lowerPath + "/contents/macos/" + strings.ToLower(exe)
+			}
 		}
 	}
 
@@ -284,6 +293,36 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 				}
 				candidates = append(candidates, candidate)
 			}
+		}
+	}
+
+	// .app bundles inherit the architecture of their main executable. Without
+	// a CFBundleExecutable to go by, fall back to the first Mach-O found in
+	// Contents/MacOS/, which may be a helper rather than the real entry point.
+	for _, appCandidate := range candidates {
+		if appCandidate.Flavor != FlavorAppMacos {
+			continue
+		}
+		macosPrefix := strings.ToLower(appCandidate.Path) + "/contents/macos/"
+		declared := bundleExecutables[appCandidate]
+
+		var match *Candidate
+		for _, c := range candidates {
+			if c.Flavor != FlavorNativeMacos {
+				continue
+			}
+			cPath := strings.ToLower(c.Path)
+			if cPath == declared {
+				match = c
+				break
+			}
+			if match == nil && declared == "" && strings.HasPrefix(cPath, macosPrefix) {
+				match = c
+			}
+		}
+		if match != nil {
+			appCandidate.Arch = match.Arch
+			appCandidate.MacosInfo = match.MacosInfo
 		}
 	}
 
@@ -453,6 +492,12 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		case FlavorNativeMacos, FlavorAppMacos:
 			if excludesOS("darwin") {
 				consumer.Debugf("Excluding (%s) - darwin (macOS) native, os filter is (%s)", c.Path, osFilter)
+				keep = false
+			}
+
+			// Intel Macs have no way to run arm64-only binaries
+			if hasArch("amd64") && c.Arch == ArchArm64 {
+				consumer.Debugf("Excluding (%s) - arm64-only, but arch filter is (%s)", c.Path, archFilter)
 				keep = false
 			}
 		case FlavorScript:
@@ -641,6 +686,31 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 
 		if len(guiCandidates) > 0 {
 			bestCandidates = guiCandidates
+		}
+
+		if len(bestCandidates) == 1 {
+			v.Candidates = bestCandidates
+			return v
+		}
+	}
+
+	// on Apple Silicon, native builds beat Intel-only builds that would need
+	// Rosetta, which Apple is phasing out after macOS 27
+	if hasOS("darwin") && hasArch("arm64") {
+		isMacos := func(c *Candidate) bool {
+			return c.Flavor == FlavorNativeMacos || c.Flavor == FlavorAppMacos
+		}
+		nativeCandidates := selectByFunc(bestCandidates, func(c *Candidate) bool {
+			return isMacos(c) && (c.Arch == ArchArm64 || c.Arch == ArchUniversal)
+		})
+		if len(nativeCandidates) > 0 {
+			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
+				if isMacos(c) && c.Arch == ArchAmd64 {
+					consumer.Debugf("Excluding (%s) - Intel-only, native arm64 candidates exist", c.Path)
+					return false
+				}
+				return true
+			})
 		}
 
 		if len(bestCandidates) == 1 {

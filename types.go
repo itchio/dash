@@ -86,6 +86,10 @@ const (
 	Arch386 Arch = "386"
 	// 64-bit
 	ArchAmd64 Arch = "amd64"
+	// ARM 64-bit (Apple Silicon)
+	ArchArm64 Arch = "arm64"
+	// Universal binary (multiple architectures)
+	ArchUniversal Arch = "universal"
 )
 
 // Contains information specific to native windows executables
@@ -122,6 +126,9 @@ const (
 // Contains information specific to native macOS executables
 // or app bundles.
 type MacosInfo struct {
+	// All CPU architectures found in the binary (for universal/fat binaries)
+	// @optional
+	Architectures []Arch `json:"architectures,omitempty"`
 }
 
 // Contains information specific to native Linux executables

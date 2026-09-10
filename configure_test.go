@@ -319,3 +319,58 @@ func Test_ConfigureBlacklist(t *testing.T) {
 	assert.EqualValues(t, 3, len(vcopy.Candidates), "three candidates left after filtering")
 	assert.EqualValues(t, "nw", vcopy.Candidates[0].Path, "non-nacl helper wins")
 }
+
+func Test_ConfigureDarwinArch(t *testing.T) {
+	root := filepath.Join("testdata", "darwin-arch")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	byPath := make(map[string]*dash.Candidate)
+	for _, c := range v.Candidates {
+		byPath[c.Path] = c
+	}
+	assert.EqualValues(t, 13, len(byPath), "finds five bundles, seven bundled execs and one naked exec")
+
+	expected := map[string]struct {
+		arch  dash.Arch
+		archs []dash.Arch
+	}{
+		"Silicon.app":                            {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		"Silicon.app/Contents/MacOS/silicon":     {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		"Intel.app":                              {dash.ArchAmd64, []dash.Arch{dash.ArchAmd64}},
+		"Intel.app/Contents/MacOS/intel":         {dash.ArchAmd64, []dash.Arch{dash.ArchAmd64}},
+		"Universal.app":                          {dash.ArchUniversal, []dash.Arch{dash.ArchAmd64, dash.ArchArm64}},
+		"Universal.app/Contents/MacOS/universal": {dash.ArchUniversal, []dash.Arch{dash.ArchAmd64, dash.ArchArm64}},
+		"naked-arm64":                            {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		// helper sorts before the main executable, CFBundleExecutable must win
+		"Mixed.app":                                 {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		"Mixed.app/Contents/MacOS/aaa-helper":       {dash.ArchAmd64, []dash.Arch{dash.ArchAmd64}},
+		"MixedBinary.app":                           {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		"MixedBinary.app/Contents/MacOS/aaa-helper": {dash.ArchAmd64, []dash.Arch{dash.ArchAmd64}},
+	}
+	for path, e := range expected {
+		c := byPath[path]
+		if !assert.NotNil(t, c, "found %s", path) {
+			continue
+		}
+		assert.EqualValues(t, e.arch, c.Arch, "arch of %s", path)
+		if assert.NotNil(t, c.MacosInfo, "macos info of %s", path) {
+			assert.EqualValues(t, e.archs, c.MacosInfo.Architectures, "architectures of %s", path)
+		}
+	}
+
+	paths := func(v dash.Verdict) []string {
+		var res []string
+		for _, c := range v.Candidates {
+			res = append(res, c.Path)
+		}
+		return res
+	}
+
+	arm := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "arm64"})
+	assert.ElementsMatch(t, []string{"Silicon.app", "Universal.app", "Mixed.app", "MixedBinary.app"}, paths(arm), "apple silicon prefers native builds over intel-only")
+
+	intel := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "amd64"})
+	assert.ElementsMatch(t, []string{"Intel.app", "Universal.app"}, paths(intel), "intel excludes arm64-only builds")
+}
