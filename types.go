@@ -92,6 +92,23 @@ const (
 	ArchUniversal Arch = "universal"
 )
 
+// HasMacosArch reports whether a macOS candidate can run natively on the
+// given architecture, looking inside universal binaries.
+func (c *Candidate) HasMacosArch(arch Arch) bool {
+	if c.Arch == arch {
+		return true
+	}
+	if c.MacosInfo == nil {
+		return false
+	}
+	for _, a := range c.MacosInfo.Architectures {
+		if a == arch {
+			return true
+		}
+	}
+	return false
+}
+
 // Contains information specific to native windows executables
 // or installer packages.
 type WindowsInfo struct {

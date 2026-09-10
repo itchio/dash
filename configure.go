@@ -521,7 +521,7 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 
 	// now keep all candidates of the lowest depth
 	lowestDepth := 4096
-	for _, c := range v.Candidates {
+	for _, c := range compatibleCandidates {
 		if c.Depth < lowestDepth {
 			lowestDepth = c.Depth
 		}
@@ -701,11 +701,11 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 			return c.Flavor == FlavorNativeMacos || c.Flavor == FlavorAppMacos
 		}
 		nativeCandidates := selectByFunc(bestCandidates, func(c *Candidate) bool {
-			return isMacos(c) && (c.Arch == ArchArm64 || c.Arch == ArchUniversal)
+			return isMacos(c) && c.HasMacosArch(ArchArm64)
 		})
 		if len(nativeCandidates) > 0 {
 			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
-				if isMacos(c) && c.Arch == ArchAmd64 {
+				if isMacos(c) && c.Arch != "" && !c.HasMacosArch(ArchArm64) {
 					consumer.Debugf("Excluding (%s) - Intel-only, native arm64 candidates exist", c.Path)
 					return false
 				}

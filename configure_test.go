@@ -330,7 +330,7 @@ func Test_ConfigureDarwinArch(t *testing.T) {
 	for _, c := range v.Candidates {
 		byPath[c.Path] = c
 	}
-	assert.EqualValues(t, 13, len(byPath), "finds five bundles, seven bundled execs and one naked exec")
+	assert.EqualValues(t, 15, len(byPath), "finds six bundles, eight bundled execs and one naked exec")
 
 	expected := map[string]struct {
 		arch  dash.Arch
@@ -343,6 +343,7 @@ func Test_ConfigureDarwinArch(t *testing.T) {
 		"Universal.app":                          {dash.ArchUniversal, []dash.Arch{dash.ArchAmd64, dash.ArchArm64}},
 		"Universal.app/Contents/MacOS/universal": {dash.ArchUniversal, []dash.Arch{dash.ArchAmd64, dash.ArchArm64}},
 		"naked-arm64":                            {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
+		"Legacy.app":                             {dash.ArchUniversal, []dash.Arch{dash.Arch386, dash.ArchAmd64}},
 		// helper sorts before the main executable, CFBundleExecutable must win
 		"Mixed.app":                                 {dash.ArchArm64, []dash.Arch{dash.ArchArm64}},
 		"Mixed.app/Contents/MacOS/aaa-helper":       {dash.ArchAmd64, []dash.Arch{dash.ArchAmd64}},
@@ -372,5 +373,28 @@ func Test_ConfigureDarwinArch(t *testing.T) {
 	assert.ElementsMatch(t, []string{"Silicon.app", "Universal.app", "Mixed.app", "MixedBinary.app"}, paths(arm), "apple silicon prefers native builds over intel-only")
 
 	intel := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "amd64"})
-	assert.ElementsMatch(t, []string{"Intel.app", "Universal.app"}, paths(intel), "intel excludes arm64-only builds")
+	assert.ElementsMatch(t, []string{"Intel.app", "Universal.app", "Legacy.app"}, paths(intel), "intel excludes arm64-only builds")
+}
+
+func Test_ConfigureDarwinArchNested(t *testing.T) {
+	root := filepath.Join("testdata", "darwin-arch-nested")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	paths := func(v dash.Verdict) []string {
+		var res []string
+		for _, c := range v.Candidates {
+			res = append(res, c.Path)
+		}
+		return res
+	}
+
+	arm := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "arm64"})
+	assert.ElementsMatch(t, []string{"Silicon.app"}, paths(arm), "top-level native bundle wins on apple silicon")
+
+	// the excluded top-level arm64 bundle must not drag the depth cutoff
+	// below the remaining intel bundles
+	intel := v.Filter(makeConsumer(t), dash.FilterParams{OS: "darwin", Arch: "amd64"})
+	assert.ElementsMatch(t, []string{"intel/Intel.app", "intel/Other.app"}, paths(intel), "deeper intel bundles survive on intel")
 }
