@@ -410,6 +410,7 @@ func (s *scan) deepProbe() {
 			if info.AssemblyInfo != nil {
 				c.WindowsInfo.RequestedExecutionLevel = info.AssemblyInfo.RequestedExecutionLevel
 			}
+			s.loveVersionFromResource(c)
 		}
 	}
 }

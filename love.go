@@ -107,12 +107,41 @@ func (loveDetector) detect(s *scan) error {
 		if !isLove {
 			continue
 		}
-		c.setEngine(loveEngine(version))
+		info := loveEngine(version).detail("embedded", true)
+		c.setEngine(info)
 		lc := loveCandidate(c.Path, version)
+		lc.Engine = info
 		lc.Size = c.Size
 		lc.Mode = c.Mode
 		lc.Depth = c.Depth
 		s.candidates = append(s.candidates, lc)
 	}
 	return nil
+}
+
+// loveVersionFromResource fills in the LÖVE version of a fused Windows
+// executable from its version resource when conf.lua did not say. The
+// resource is written by the LÖVE build itself, so it names the runtime
+// version, which is what a host needs. Games that replace the resource
+// with their own name are left alone.
+func (s *scan) loveVersionFromResource(c *Candidate) {
+	if c.Engine == nil || c.Engine.Engine != EngineLove || c.Engine.Version != "" {
+		return
+	}
+	if c.WindowsInfo == nil || c.WindowsInfo.VersionProperties["ProductName"] != "LÖVE" {
+		return
+	}
+	version := c.WindowsInfo.VersionProperties["ProductVersion"]
+	if version == "" {
+		return
+	}
+	c.Engine.Version = version
+	for _, lc := range s.candidates {
+		if lc.Flavor == FlavorLove && lc.Path == c.Path {
+			lc.Engine.Version = version
+			if lc.LoveInfo != nil {
+				lc.LoveInfo.Version = version
+			}
+		}
+	}
 }

@@ -473,7 +473,8 @@ func Test_Love(t *testing.T) {
 	assert.EqualValues(t, "11.5", c.LoveInfo.Version, "LoveInfo stays populated")
 
 	m.expect(t, "fused/Game.exe", dash.FlavorNativeWindows, dash.EngineLove, "11.4")
-	m.expect(t, "fused/Game.exe#love", dash.FlavorLove, dash.EngineLove, "11.4")
+	fused := m.expect(t, "fused/Game.exe#love", dash.FlavorLove, dash.EngineLove, "11.4")
+	assert.EqualValues(t, true, detail(fused, "embedded"))
 	m.expect(t, "notfused/Other.exe", dash.FlavorNativeWindows, "", "")
 	assert.Nil(t, m["notfused/Other.exe#love"])
 
