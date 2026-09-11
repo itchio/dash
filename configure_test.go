@@ -414,5 +414,16 @@ func Test_ConfigureLinuxArch(t *testing.T) {
 		"game.aarch64": dash.ArchArm64,
 		"game.x86_64":  dash.ArchAmd64,
 		"game.x86":     dash.Arch386,
+		"game.armv7":   dash.ArchArm,
+		"game.riscv64": dash.ArchRiscv64,
+		"game.freebsd": dash.ArchAmd64,
 	}, byPath)
+
+	for _, c := range v.Candidates {
+		if c.Path == "game.freebsd" {
+			assert.EqualValues(t, "freebsd", c.LinuxInfo.OS, "OS ABI byte names the BSDs")
+		} else {
+			assert.Empty(t, c.LinuxInfo.OS)
+		}
+	}
 }

@@ -17,18 +17,14 @@ import (
 	"github.com/pkg/errors"
 )
 
-func sniffPoolEntry(pool lake.Pool, fileIndex int64, file *tlc.File) (*Candidate, error) {
-	r, err := pool.GetReadSeeker(fileIndex)
-	if err != nil {
-		return nil, errors.Wrap(err, "while getting read seeker for pool entry")
-	}
-
-	size := pool.GetSize(fileIndex)
-
-	return Sniff(r, file.Path, size)
+// Sniff identifies a single file by name and magic. It is what the magic
+// pass of Configure runs per file; engine detection needs the whole folder
+// and only happens in Configure.
+func Sniff(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
+	return sniff(newProbeReader(r, size, 0), name, size)
 }
 
-func Sniff(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
+func sniff(r *probeReader, name string, size int64) (*Candidate, error) {
 	c, err := doSniff(r, name, size)
 	if c != nil {
 		c.Size = size
@@ -40,7 +36,7 @@ func Sniff(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
 	return c, err
 }
 
-func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
+func doSniff(r *probeReader, path string, size int64) (*Candidate, error) {
 	lowerPath := strings.ToLower(path)
 
 	lowerBase := filepath.Base(lowerPath)
@@ -52,14 +48,11 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 			Path:   path,
 		}, nil
 	case "conf.lua":
-		return sniffLove(r, size, dir)
+		return sniffLoveConf(r, dir)
 	}
 
 	if strings.HasSuffix(lowerPath, ".love") {
-		return &Candidate{
-			Flavor: FlavorLove,
-			Path:   path,
-		}, nil
+		return sniffLoveArchive(r, path, size)
 	}
 
 	// if it ends in .exe, it's probably an .exe
@@ -82,9 +75,8 @@ func doSniff(r io.ReadSeeker, path string, size int64) (*Candidate, error) {
 		}, nil
 	}
 
-	buf := make([]byte, 8)
-	n, _ := io.ReadFull(r, buf)
-	if n < len(buf) {
+	buf := r.readHead(8)
+	if len(buf) < 8 {
 		// too short to be an exec or unreadable
 		return nil, nil
 	}
@@ -141,19 +133,43 @@ type ConfigureParams struct {
 	Filter tlc.FilterFunc
 	Stats  *VerdictStats
 
-	CandidateDetector
+	// MaxProbeBytes caps how much of any single file sniffing may read.
+	// Zero means DefaultMaxProbeBytes.
+	MaxProbeBytes int64
+
+	// DeepProbe fills the dependency record of native candidates
+	// (LinuxInfo.Imports, GlibcVersion, WindowsInfo.Imports). It parses
+	// section and symbol tables and is not subject to MaxProbeBytes, so
+	// leave it off at launch time.
+	DeepProbe bool
 }
 
-type CandidateDetector interface {
-	// Error returned here is treated as critical and will
-	// cancel Configuration.
-	DetectCandidate(pool lake.Pool, fileIndex int64, f *tlc.File) (DetectResult, error)
-}
-
-type DetectResult struct {
-	// Allowed to be nil.
-	Candidate           *Candidate
-	SkipDefaultAnalysis bool
+// detectors run in this order, after the magic pass. Order only matters
+// where one detector reads what another annotated, and none do today.
+var detectors = []engineDetector{
+	loveDetector{},
+	godotDetector{},
+	gamemakerDetector{},
+	pico8Detector{},
+	romDetector{},
+	dosDetector{},
+	wadDetector{},
+	renpyDetector{},
+	rpgmakerDetector{},
+	agsDetector{},
+	swfDetector{},
+	pyxelDetector{},
+	solarusDetector{},
+	tic80Detector{},
+	openborDetector{},
+	unityDetector{},
+	unrealDetector{},
+	dotnetDetector{},
+	hashlinkDetector{},
+	defoldDetector{},
+	constructDetector{},
+	shellDetector{},
+	pythonDetector{},
 }
 
 // Configure walks a directory and finds potential launch candidates,
@@ -188,7 +204,8 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	defer pool.Close()
 
-	var candidates = make([]*Candidate, 0)
+	s := newScan(params, pool, container)
+	s.candidates = make([]*Candidate, 0)
 
 	// lowercased path of each .app bundle's main executable, when its
 	// Info.plist declares one
@@ -199,15 +216,8 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 		if strings.HasSuffix(lowerPath, ".app") {
 			plistPath := lowerPath + "/contents/info.plist"
 
-			plistIndex := -1
-			for fileIndex, f := range container.Files {
-				if strings.ToLower(f.Path) == plistPath {
-					plistIndex = fileIndex
-					break
-				}
-			}
-
-			if plistIndex < 0 {
+			plistIndex, ok := s.file(plistPath)
+			if !ok {
 				consumer.Logf("Found app bundle without an Info.plist: %s", d.Path)
 				continue
 			}
@@ -219,7 +229,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 				Mode:   d.Mode,
 			}
 			res.Depth = pathDepth(res.Path)
-			candidates = append(candidates, res)
+			s.candidates = append(s.candidates, res)
 
 			exe, err := readBundleExecutable(pool, int64(plistIndex))
 			if err != nil {
@@ -232,38 +242,31 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 
 	for fileIndex, f := range container.Files {
 		verdict.TotalSize += f.Size
-		if params.CandidateDetector != nil {
-			res, err := params.CandidateDetector.DetectCandidate(pool, int64(fileIndex), f)
-			if err != nil {
-				return nil, errors.Wrap(err, "detect candidate")
-			}
-			if res.Candidate != nil {
-				candidates = append(candidates, res.Candidate)
-			}
-			if res.SkipDefaultAnalysis {
-				continue
-			}
+		if isBlacklistedExt(f.Path) {
+			continue
 		}
-		if !isBlacklistedExt(f.Path) {
-			if params.Stats != nil {
-				params.Stats.NumSniffs++
-				ext := getExt(f.Path)
-				params.Stats.SniffsByExt[ext] = params.Stats.SniffsByExt[ext] + 1
-			}
+		if params.Stats != nil {
+			params.Stats.NumSniffs++
+			ext := getExt(f.Path)
+			params.Stats.SniffsByExt[ext] = params.Stats.SniffsByExt[ext] + 1
+		}
 
-			res, err := sniffPoolEntry(pool, int64(fileIndex), f)
-			if err != nil {
-				return nil, errors.Wrap(err, "sniffing pool entry")
-			}
+		r, err := s.open(fileIndex)
+		if err != nil {
+			return nil, errors.Wrap(err, "sniffing pool entry")
+		}
+		res, err := sniff(r, f.Path, r.size)
+		if err != nil {
+			return nil, errors.Wrap(err, "sniffing pool entry")
+		}
 
-			if res != nil {
-				res.Mode = f.Mode
-				candidates = append(candidates, res)
-			}
+		if res != nil {
+			res.Mode = f.Mode
+			s.candidates = append(s.candidates, res)
 		}
 	}
 
-	if len(candidates) == 0 && container.IsSingleFile() {
+	if len(s.candidates) == 0 && container.IsSingleFile() {
 		f := container.Files[0]
 
 		if hasExt(f.Path, ".html") {
@@ -275,11 +278,11 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 				Depth:  pathDepth(f.Path),
 				Flavor: FlavorHTML,
 			}
-			candidates = append(candidates, candidate)
+			s.candidates = append(s.candidates, candidate)
 		}
 	}
 
-	if len(candidates) == 0 {
+	if len(s.candidates) == 0 {
 		// still no candidates? if we have a top-level .html file, let's go for it
 		for _, f := range container.Files {
 			if pathDepth(f.Path) == 1 && hasExt(f.Path, ".html") {
@@ -291,7 +294,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 					Depth:  pathDepth(f.Path),
 					Flavor: FlavorHTML,
 				}
-				candidates = append(candidates, candidate)
+				s.candidates = append(s.candidates, candidate)
 			}
 		}
 	}
@@ -299,7 +302,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 	// .app bundles inherit the architecture of their main executable. Without
 	// a CFBundleExecutable to go by, fall back to the first Mach-O found in
 	// Contents/MacOS/, which may be a helper rather than the real entry point.
-	for _, appCandidate := range candidates {
+	for _, appCandidate := range s.candidates {
 		if appCandidate.Flavor != FlavorAppMacos {
 			continue
 		}
@@ -307,7 +310,7 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 		declared := bundleExecutables[appCandidate]
 
 		var match *Candidate
-		for _, c := range candidates {
+		for _, c := range s.candidates {
 			if c.Flavor != FlavorNativeMacos {
 				continue
 			}
@@ -326,9 +329,80 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 		}
 	}
 
-	verdict.Candidates = candidates
+	for _, d := range detectors {
+		if err := d.detect(s); err != nil {
+			return nil, errors.Wrapf(err, "engine detector %T", d)
+		}
+	}
+
+	if params.DeepProbe {
+		s.deepProbe()
+	}
+
+	verdict.Candidates = s.candidates
 
 	return verdict, nil
+}
+
+// probePE runs pelican on an executable, turning a panic on a malformed
+// image into an error: uploads are not trusted input.
+func probePE(f *eosFile, consumer *state.Consumer) (info *pelican.PeInfo, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			info = nil
+			err = fmt.Errorf("pelican panicked: %v", r)
+		}
+	}()
+	return pelican.Probe(f, pelican.ProbeParams{Consumer: consumer})
+}
+
+// deepProbe fills the native dependency records. Failures are logged, not
+// fatal: a candidate without a record is still a candidate.
+func (s *scan) deepProbe() {
+	for _, c := range s.candidates {
+		index, ok := s.file(strings.ToLower(c.Path))
+		if !ok {
+			continue
+		}
+		switch c.Flavor {
+		case FlavorNativeLinux:
+			r, _, err := s.openRaw(index)
+			if err != nil {
+				s.logf("deep probe: %s", err)
+				continue
+			}
+			if c.LinuxInfo == nil {
+				c.LinuxInfo = &LinuxInfo{Arch: c.Arch}
+			}
+			if err := probeELF(&readerAtFromSeeker{r}, c.LinuxInfo); err != nil {
+				s.logf("deep probe: %s: %s", c.Path, err)
+			}
+		case FlavorNativeWindows:
+			r, size, err := s.openRaw(index)
+			if err != nil {
+				s.logf("deep probe: %s", err)
+				continue
+			}
+			if c.WindowsInfo == nil {
+				c.WindowsInfo = &WindowsInfo{}
+			}
+			var peLines []string
+			memConsumer := &state.Consumer{
+				OnMessage: func(lvl string, msg string) {
+					peLines = append(peLines, fmt.Sprintf("pelican> [%s] %s", lvl, msg))
+				},
+			}
+			info, err := probePE(&eosFile{rs: r, ra: &readerAtFromSeeker{r}, size: size, name: c.Path}, memConsumer)
+			if err != nil {
+				s.logf("deep probe: %s: %s\n%s", c.Path, err, strings.Join(peLines, "\n"))
+				continue
+			}
+			c.WindowsInfo.Imports = info.Imports
+			if c.WindowsInfo.Arch == "" {
+				c.WindowsInfo.Arch = Arch(info.Arch)
+			}
+		}
+	}
 }
 
 type FixPermissionsParams struct {
@@ -428,6 +502,9 @@ var blacklist = []BlacklistEntry{
 	{regexp.MustCompile(`(?i)nacl_helper`), Penalty{PenaltyScore, 20}},
 	{regexp.MustCompile(`(?i)nwjc\.exe$`), Penalty{PenaltyScore, 20}},
 	{regexp.MustCompile(`(?i)flixel\.exe$`), Penalty{PenaltyScore, 20}},
+	{regexp.MustCompile(`(?i)chrome-sandbox$`), Penalty{PenaltyScore, 20}},
+	{regexp.MustCompile(`(?i)crashpad_handler`), Penalty{PenaltyScore, 20}},
+	{regexp.MustCompile(`(?i)notification_helper\.exe$`), Penalty{PenaltyScore, 20}},
 
 	// Excludes
 	{regexp.MustCompile(`(?i)\.(so|dylib)$`), Penalty{PenaltyExclude, 0}},
@@ -444,6 +521,36 @@ type ScoredCandidate struct {
 type FilterParams struct {
 	OS   string
 	Arch string
+	// Runtimes lists the payload flavors the host can run with a runtime of
+	// its own: "godot-pck", "love", "rom:snes" (or "rom" for every system).
+	// Matching candidates survive alongside natives instead of losing to
+	// them, and are ranked with them by size and score.
+	Runtimes []Flavor
+}
+
+// supportsRuntime reports whether a payload candidate is covered by the
+// host's runtime list.
+func (params FilterParams) supportsRuntime(c *Candidate) bool {
+	if !c.IsPayload() {
+		return false
+	}
+	for _, r := range params.Runtimes {
+		if r == c.Flavor {
+			return true
+		}
+		if c.Flavor == FlavorROM && c.Engine != nil && r == Flavor("rom:"+romSystem(c)) {
+			return true
+		}
+	}
+	return false
+}
+
+func romSystem(c *Candidate) string {
+	if c.Engine == nil {
+		return ""
+	}
+	system, _ := c.Engine.Details["system"].(string)
+	return system
 }
 
 // Filter candidates by OS and/or Arch
@@ -451,6 +558,44 @@ type FilterParams struct {
 //
 // Returns a copy of this Verdict.
 func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
+	if len(params.Runtimes) == 0 {
+		return v.filterHost(consumer, params)
+	}
+
+	// payloads the host has a runtime for skip the host rules entirely and
+	// rejoin the natives for the final ranking
+	var runtimeCandidates []*Candidate
+	hostVerdict := v
+	hostVerdict.Candidates = nil
+	for _, c := range v.Candidates {
+		if params.supportsRuntime(c) {
+			consumer.Debugf("Keeping (%s) - host has a runtime for flavor %v", c.Path, c.Flavor)
+			runtimeCandidates = append(runtimeCandidates, c)
+		} else {
+			hostVerdict.Candidates = append(hostVerdict.Candidates, c)
+		}
+	}
+	if len(runtimeCandidates) == 0 {
+		return v.filterHost(consumer, params)
+	}
+
+	// a host that named its runtimes and found a match has no use for the
+	// engine payloads it did not name
+	hostVerdict.Candidates = selectByFunc(hostVerdict.Candidates, func(c *Candidate) bool {
+		if enginePayloadFlavors[c.Flavor] {
+			consumer.Debugf("Excluding (%s) - flavor %v has no runtime on this host", c.Path, c.Flavor)
+			return false
+		}
+		return true
+	})
+
+	best := hostVerdict.filterHost(consumer, params).Candidates
+	best = append(best, runtimeCandidates...)
+	v.Candidates = rankCandidates(consumer, best)
+	return v
+}
+
+func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdict {
 	osFilter := params.OS
 	archFilter := params.Arch
 
@@ -512,6 +657,25 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 			compatibleCandidates = append(compatibleCandidates, c)
 		}
 	}
+	// a payload that shares its path with an executable (a fused LÖVE exe,
+	// an embedded Godot pck) is that executable seen through a runtime's
+	// eyes. Hosts without runtimes launch the executable, and hosts with
+	// runtimes never reach this point with it, so it must not compete here
+	// or the love rule would hand butler an exe to run with love
+	nativePaths := make(map[string]bool)
+	for _, c := range v.Candidates {
+		if c.IsNative() {
+			nativePaths[c.Path] = true
+		}
+	}
+	compatibleCandidates = selectByFunc(compatibleCandidates, func(c *Candidate) bool {
+		if c.IsPayload() && nativePaths[c.Path] {
+			consumer.Debugf("Excluding (%s) - %v payload embedded in an executable", c.Path, c.Flavor)
+			return false
+		}
+		return true
+	})
+
 	bestCandidates := compatibleCandidates
 
 	if len(bestCandidates) == 1 {
@@ -730,6 +894,20 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		}
 	}
 
+	// everywhere, engine payloads lose if there's anything else good: on a
+	// host with no runtime for them they are data files
+	{
+		payloadCandidates := selectByFunc(bestCandidates, func(c *Candidate) bool {
+			return enginePayloadFlavors[c.Flavor]
+		})
+		if len(payloadCandidates) > 0 && len(payloadCandidates) < len(bestCandidates) {
+			consumer.Debugf("Has %d engine payload candidates, but %d others - excluding payloads", len(payloadCandidates), len(bestCandidates)-len(payloadCandidates))
+			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
+				return !enginePayloadFlavors[c.Flavor]
+			})
+		}
+	}
+
 	// everywhere, jars lose if there's anything else good
 	{
 		jarCandidates := selectByFlavor(bestCandidates, FlavorJar)
@@ -741,9 +919,16 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		}
 	}
 
+	v.Candidates = rankCandidates(consumer, bestCandidates)
+	return v
+}
+
+// rankCandidates orders by size, then applies name penalties and orders by
+// score, dropping excluded names.
+func rankCandidates(consumer *state.Consumer, candidates []*Candidate) []*Candidate {
+	bestCandidates := append([]*Candidate(nil), candidates...)
 	sort.Stable(&biggestFirst{bestCandidates})
 
-	// score, filter & sort
 	computeScore := func(candidate *Candidate) ScoredCandidate {
 		var score int64 = 100
 		for _, entry := range blacklist {
@@ -781,7 +966,5 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 	for _, scored := range scoredCandidates {
 		finalCandidates = append(finalCandidates, scored.candidate)
 	}
-
-	v.Candidates = finalCandidates
-	return v
+	return finalCandidates
 }

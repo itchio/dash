@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func sniffScript(r io.ReadSeeker, size int64) (*Candidate, error) {
+func sniffScript(r *probeReader, size int64) (*Candidate, error) {
 	res := &Candidate{
 		Flavor:     FlavorScript,
 		ScriptInfo: &ScriptInfo{},

@@ -47,6 +47,10 @@ type Candidate struct {
 	// JarInfo contains information specific to Java archives (`.jar` files)
 	// @optional
 	JarInfo *JarInfo `json:"jarInfo,omitempty"`
+	// Engine is what made this candidate. Set on natives when a known engine
+	// left its footprint next to them, and on payload flavors always.
+	// @optional
+	Engine *EngineInfo `json:"engine,omitempty"`
 	// Any other info.
 	// @optional
 	Metadata map[string]any `json:"metadata,omitempty"`
@@ -76,6 +80,42 @@ const (
 	FlavorLove Flavor = "love"
 	// Microsoft installer packages
 	FlavorMSI Flavor = "msi"
+
+	// Payload flavors: files or folders an external runtime consumes.
+	// Every candidate with one of these carries an Engine.
+
+	// Godot pack file, standalone or embedded in an executable
+	FlavorGodotPck Flavor = "godot-pck"
+	// GameMaker data file (data.win, game.unx, game.ios, game.droid)
+	FlavorGameMakerData Flavor = "gamemaker-data"
+	// PICO-8 cartridge (.p8, .p8.png)
+	FlavorPico8Cart Flavor = "pico8-cart"
+	// Ren'Py project: the folder holding game/
+	FlavorRenpy Flavor = "renpy"
+	// RPG Maker MV/MZ project: the folder holding js/ and index.html
+	FlavorRPGMakerMV Flavor = "rpgmaker-mv"
+	// RPG Maker XP/VX/VX Ace project: the folder holding Game.ini
+	FlavorRPGMakerXP Flavor = "rpgmaker-xp"
+	// RPG Maker 2000/2003 project: the folder holding RPG_RT.ldb
+	FlavorRPGMaker2k Flavor = "rpgmaker-2k"
+	// Adventure Game Studio game: the exe with appended data, or a .ags file
+	FlavorAGS Flavor = "ags"
+	// Doom engine WAD or PK3
+	FlavorDoomWad Flavor = "doom-wad"
+	// Flash movie, standalone or in a projector exe
+	FlavorSWF Flavor = "swf"
+	// Folder holding 16-bit DOS executables
+	FlavorDOS Flavor = "dos"
+	// Pyxel application bundle (.pyxapp)
+	FlavorPyxelApp Flavor = "pyxel-app"
+	// Solarus quest (.solarus archive or folder holding data/quest.dat)
+	FlavorSolarusQuest Flavor = "solarus-quest"
+	// TIC-80 cartridge (.tic)
+	FlavorTIC80Cart Flavor = "tic80-cart"
+	// OpenBOR module (.pak)
+	FlavorOpenBORPak Flavor = "openbor-pak"
+	// Console ROM or disc image, system in Engine.Details["system"]
+	FlavorROM Flavor = "rom"
 )
 
 // The architecture of an executable
@@ -86,8 +126,12 @@ const (
 	Arch386 Arch = "386"
 	// 64-bit
 	ArchAmd64 Arch = "amd64"
-	// ARM 64-bit (Apple Silicon)
+	// ARM 64-bit (Apple Silicon, aarch64 handhelds)
 	ArchArm64 Arch = "arm64"
+	// ARM 32-bit (Raspberry Pi and older handhelds)
+	ArchArm Arch = "arm"
+	// RISC-V 64-bit
+	ArchRiscv64 Arch = "riscv64"
 	// Universal binary (multiple architectures)
 	ArchUniversal Arch = "universal"
 )
@@ -124,6 +168,12 @@ type WindowsInfo struct {
 	// Is this a .NET assembly?
 	// @optional
 	DotNet bool `json:"dotNet,omitempty"`
+	// Machine type from the PE header
+	// @optional
+	Arch Arch `json:"arch,omitempty"`
+	// Imported DLLs, only filled when ConfigureParams.DeepProbe is set
+	// @optional
+	Imports []string `json:"imports,omitempty"`
 }
 
 // Which particular type of windows-specific installer
@@ -150,6 +200,26 @@ type MacosInfo struct {
 
 // Contains information specific to native Linux executables
 type LinuxInfo struct {
+	// Machine type from the ELF header
+	// @optional
+	Arch Arch `json:"arch,omitempty"`
+	// Operating system the ELF targets when it is not Linux: "freebsd",
+	// "openbsd", "netbsd" from the header's OS ABI byte, "haiku" from its
+	// imports (deep probe only). Such builds still get the linux flavor.
+	// @optional
+	OS string `json:"os,omitempty"`
+	// True when the executable has no dynamic section (no interpreter, no
+	// DT_NEEDED). Only meaningful when ConfigureParams.DeepProbe is set.
+	// @optional
+	Static bool `json:"static,omitempty"`
+	// Highest GLIBC_x.y symbol version the executable references.
+	// Only filled when ConfigureParams.DeepProbe is set.
+	// @optional
+	GlibcVersion string `json:"glibcVersion,omitempty"`
+	// Shared libraries listed in DT_NEEDED, in link order.
+	// Only filled when ConfigureParams.DeepProbe is set.
+	// @optional
+	Imports []string `json:"imports,omitempty"`
 }
 
 // Contains information specific to Love2D bundles

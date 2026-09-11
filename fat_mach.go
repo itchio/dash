@@ -15,8 +15,8 @@ const (
 	machCpuArm    = 12
 )
 
-func sniffFatMach(r io.ReadSeeker, size int64) (*Candidate, error) {
-	ra := &readerAtFromSeeker{r}
+func sniffFatMach(r *probeReader, size int64) (*Candidate, error) {
+	var ra io.ReaderAt = r
 
 	sr := wizutil.NewSliceReader(ra, 0, size)
 	spell := spellbook.Identify(sr, 0)
@@ -34,8 +34,8 @@ func sniffFatMach(r io.ReadSeeker, size int64) (*Candidate, error) {
 	return result, nil
 }
 
-func sniffMachO(r io.ReadSeeker, size int64) (*Candidate, error) {
-	ra := &readerAtFromSeeker{r}
+func sniffMachO(r *probeReader, size int64) (*Candidate, error) {
+	var ra io.ReaderAt = r
 
 	sr := wizutil.NewSliceReader(ra, 0, size)
 	spell := spellbook.Identify(sr, 0)

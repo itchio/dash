@@ -72,5 +72,12 @@ func (c *Candidate) String() string {
 	append("win", intermediate["windowsInfo"])
 	append("sh", intermediate["scriptInfo"])
 
+	if c.Engine != nil {
+		line += fmt.Sprintf(" engine=%s", c.Engine.Engine)
+		if c.Engine.Version != "" {
+			line += "@" + c.Engine.Version
+		}
+	}
+
 	return line
 }
