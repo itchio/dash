@@ -1,5 +1,13 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://coreyhardt.itch.io/magic-jump
+//     Windows data.win, GMS2
+//   https://mochamoosegames.itch.io/mailroom-mayhem
+//     Linux runner with assets/game.unx
+//   https://daz.itch.io/tiny-fragments
+//     macOS bundle with Contents/Resources/game.ios
+
 import (
 	"encoding/binary"
 	"fmt"

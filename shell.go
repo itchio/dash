@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://metroid-studios.itch.io/dank-wizards
+//     Electron on Linux
+//   https://foxbo-studios.itch.io/bottle-bone-it
+//     NW.js with nw.dll and zipped package.nw
+
 import (
 	"encoding/json"
 	"strings"

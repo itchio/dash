@@ -1,5 +1,10 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://cj2005.itch.io/clean-the-air-beta
+//     Construct 3
+//   Construct 2: not yet verified against a live game
+
 import (
 	"strings"
 )

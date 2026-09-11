@@ -1,5 +1,10 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://01010111.itch.io/bedhogg
+//     .swf version 21
+//   a projector exe: not yet verified against a live game
+
 import (
 	"encoding/binary"
 	"strconv"

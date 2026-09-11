@@ -1,7 +1,36 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://randomyoshiyt.itch.io/binary-land
+//     .nes
+//   https://kininia.itch.io/gb-dungeon
+//     .gb
+//   https://coffeevalenbat.itch.io/pizza-delivery-re-heated
+//     .gbc
+//   https://pyro-pyro.itch.io/sekhmets-playground
+//     homebrew .gba
+//   https://panelix.itch.io/panelix
+//     homebrew .gba
+//   https://poolo.itch.io/hamster-blaster-3000
+//     homebrew .nds with the logo
+//   https://digitaldesigndude.itch.io/fishing-the-deep
+//     homebrew .nds without logo or title, entry points only
+//   https://team-disposable.itch.io/angelsong
+//     .sfc
+//   https://salvatoretosti.itch.io/runic-64
+//     homebrew .z64
+//   https://teamultrarare.itch.io/styx
+//     homebrew .z64
+//   https://geese-bumps.itch.io/the-weave
+//     Mega Drive .bin with SEGA header
+//   https://bonaf.itch.io/master-system-brawl
+//     .bin carrying a SEGA header, reported as md
+//   https://dilshan2k14.itch.io/regulate-3x3-demo
+//     PC .iso, correctly not a ROM
+
 import (
 	"bytes"
+	"encoding/binary"
 	"regexp"
 	"strings"
 )
@@ -171,12 +200,26 @@ func checkGBA(s *scan, index int, _ string) (string, bool, bool) {
 	return "", false, false
 }
 
+// checkNDS accepts the Nintendo logo, or, for homebrew that leaves the
+// logo and title blank, ARM9 and ARM7 entry points inside main RAM (or
+// shared WRAM for the ARM7).
 func checkNDS(s *scan, index int, _ string) (string, bool, bool) {
 	r, err := s.open(index)
 	if err != nil {
 		return "", false, false
 	}
 	if bytes.Equal(r.readAt(0xc0, 8), gbaLogoHead) {
+		return "nds", true, true
+	}
+	hdr := r.readAt(0x20, 0x18)
+	if hdr == nil {
+		return "", false, false
+	}
+	arm9Entry := binary.LittleEndian.Uint32(hdr[4:8])
+	arm7Entry := binary.LittleEndian.Uint32(hdr[0x14:0x18])
+	inMainRAM := func(a uint32) bool { return a >= 0x02000000 && a < 0x02400000 }
+	inSharedWRAM := func(a uint32) bool { return a >= 0x03780000 && a < 0x03808000 }
+	if inMainRAM(arm9Entry) && (inMainRAM(arm7Entry) || inSharedWRAM(arm7Entry)) {
 		return "nds", true, true
 	}
 	return "", false, false

@@ -1,5 +1,8 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://takaneichinose.itch.io/shroomy-shroom
+
 // pyxelDetector finds .pyxapp bundles, which are zips of the app folder.
 type pyxelDetector struct{}
 

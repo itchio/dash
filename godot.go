@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://magellanicgames.itch.io/heir-of-eminence
+//     embedded in ELF, 3.2.2
+//   https://pipoypipagames.itch.io/cows-revenge
+//     embedded in ELF, Godot 2.1 pack format 0
+
 import (
 	"encoding/binary"
 	"fmt"

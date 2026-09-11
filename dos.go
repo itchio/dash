@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://kosmokrab.itch.io/zerp
+//     .com files only
+//   https://devolverdigital.itch.io/mcpixel-3
+//     bin/mcdos.exe
+
 import (
 	"encoding/binary"
 	"sort"

@@ -1,5 +1,9 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://almightybr0.itch.io/daylight
+//     UE4 WindowsNoEditor, pak version 11
+
 import (
 	"bytes"
 	"encoding/binary"

@@ -1,5 +1,8 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://enembysprototypes.itch.io/island-generator-tic-80
+
 // tic80Detector finds .tic cartridges. The format is a chunk list with no
 // magic, so the name is all there is.
 //

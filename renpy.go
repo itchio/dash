@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://doraxnobi.itch.io/milfy-multiverse
+//     (NSFW) Ren'Py 8.1.3 pc build, version in vc_version.py
+//   https://bluusorbet.itch.io/once-you-said-no
+//     macOS bundle, game in Contents/Resources/autorun, 8.3.6
+
 import (
 	"regexp"
 	"strings"

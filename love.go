@@ -1,5 +1,13 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://goedev.itch.io/erik
+//     .love with conf.lua, LÖVE 11.3
+//   https://squawks.itch.io/revenir
+//     fused Windows exe, 11.1
+//   https://abhimonk.itch.io/planet-d4rk
+//     fused Windows exe without conf.lua
+
 import (
 	"bufio"
 	"bytes"

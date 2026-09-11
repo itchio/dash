@@ -1,5 +1,17 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://nothke.itch.io/interminal
+//     2019.4 il2cpp
+//   https://nyxgaming.itch.io/first-time-caller
+//     2020.1 mono
+//   https://whalesandgames.itch.io/colossorama
+//     Unity 5.4
+//   https://agggron.itch.io/the-yellow-moon-inn
+//     2017.3
+//   https://raealbus.itch.io/culinary-cooking
+//     WebGL
+
 import (
 	"regexp"
 	"strings"

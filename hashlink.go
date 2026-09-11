@@ -1,5 +1,8 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://t-bar.itch.io/spelling-shenanigans
+
 // hashlinkDetector annotates executables next to hlboot.dat.
 type hashlinkDetector struct{}
 

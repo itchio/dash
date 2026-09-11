@@ -1,5 +1,12 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://rtheilade.itch.io/monogame-zombie-repeat-shooter
+//     MonoGame on Linux, .NET core
+//   https://joppiesaus.itch.io/offensive-defense
+//     MonoGame on Windows, .NET framework
+//   FNA and XNA: not yet verified against a live game
+
 import (
 	"strings"
 )

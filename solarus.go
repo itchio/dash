@@ -1,5 +1,10 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://glowingdawnmist.itch.io/nanobot
+//     .solarus archive
+//   the folder form: not yet verified against a live game
+
 import (
 	"regexp"
 	"strings"

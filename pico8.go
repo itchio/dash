@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://cpav.itch.io/pocket-tactics
+//     .p8.png
+//   https://egordorichev.itch.io/penance
+//     .p8 text cart, version 11
+
 import (
 	"bytes"
 	"regexp"

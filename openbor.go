@@ -1,5 +1,9 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://shadowman-ddt.itch.io/wonder-woman-streets-of-truth
+//     OpenBOR.exe with Paks/
+
 // openborDetector finds OpenBOR modules. Quake and others use the same
 // "PACK" magic for their .pak files, so the signal is weak unless the pak
 // sits in the Paks/ folder the engine loads from, in which case the engine

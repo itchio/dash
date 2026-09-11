@@ -1,5 +1,14 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://qbk.itch.io/pdgrm2k3
+//     RPG Maker 2003 with EasyRPG Player.exe
+//   https://daturabane.itch.io/russian-roulette-simulator-2003
+//     RPG Maker 2003
+//   https://nomnomnami.itch.io/lonely-wolf-treat
+//     VX Ace, Game.ini with RGSS301
+//   MV/MZ builds: not yet verified against a live game
+
 import (
 	"regexp"
 	"strings"

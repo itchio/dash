@@ -1,5 +1,9 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://devolverdigital.itch.io/mcpixel-3
+//     i386, amd64, arm64, arm, riscv64, FreeBSD and Haiku builds
+
 import (
 	"debug/elf"
 	"encoding/binary"

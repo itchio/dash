@@ -1,5 +1,11 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://dumbest-g1rl-al1ve.itch.io/mauds-first-doomwad
+//     PWAD
+//   https://soundcrafter.itch.io/rngdoom
+//     .pk3 with MAPINFO
+
 import (
 	"strings"
 )

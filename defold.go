@@ -1,5 +1,10 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://chubeather.itch.io/cannongame
+//     web build with dmloader.js
+//   a native build: not yet verified against a live game
+
 import "strings"
 
 // defoldDetector annotates executables next to game.projectc and a

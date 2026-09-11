@@ -1,5 +1,10 @@
 package dash
 
+// Reference game pages used to verify this detector:
+//   https://fractalmindmike.itch.io/dots
+//     version 30 .ags next to the engine exe
+//   an exe with appended data: not yet verified against a live game
+
 import (
 	"bytes"
 	"encoding/binary"
