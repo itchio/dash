@@ -145,11 +145,18 @@ func (s *scan) readTail(index int, n int) []byte {
 	}
 	tail, ok := s.tails[index]
 	if !ok {
+		r, err := s.open(index)
+		if err != nil {
+			return nil
+		}
+		tail = r.readTail(tailWindow)
+		if tail == nil {
+			// the window is over budget; the caller's smaller read may
+			// still fit, and a later caller gets to try the window again
+			return r.readTail(n)
+		}
 		if s.tails == nil {
 			s.tails = make(map[int][]byte)
-		}
-		if r, err := s.open(index); err == nil {
-			tail = r.readTail(tailWindow)
 		}
 		s.tails[index] = tail
 	}

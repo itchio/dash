@@ -128,6 +128,7 @@ func Test_Godot(t *testing.T) {
 
 	m.expect(t, "Mac.app", dash.FlavorAppMacos, dash.EngineGodot, "4.2.1")
 	m.expect(t, "Mac.app/Contents/Resources/game.pck", dash.FlavorGodotPck, dash.EngineGodot, "4.2.1")
+	m.expect(t, "bigembedded/game.x86_64", dash.FlavorNativeLinux, dash.EngineGodot, "4.3.0")
 }
 
 func Test_GodotFilter(t *testing.T) {
@@ -135,11 +136,13 @@ func Test_GodotFilter(t *testing.T) {
 
 	// desktop: unchanged, the native wins and the pck is invisible
 	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
-	assert.EqualValues(t, []string{"game.x86_64"}, candidatePaths(linux))
+	assert.EqualValues(t, []string{"game.x86_64"}, candidatePaths(linux), "top-level native wins on depth")
 
 	// handheld with a Godot runtime: every pck survives next to the native
 	frt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorGodotPck}})
-	assert.ElementsMatch(t, []string{"game.x86_64", "game.pck", "embedded/Game.exe", "Mac.app/Contents/Resources/game.pck"}, candidatePaths(frt))
+	// the deeper native loses on depth as usual; its embedded pck is a
+	// runtime candidate and stays
+	assert.ElementsMatch(t, []string{"game.x86_64", "game.pck", "embedded/Game.exe", "Mac.app/Contents/Resources/game.pck", "bigembedded/game.x86_64"}, candidatePaths(frt))
 	for _, c := range frt.Candidates {
 		if c.Path != "game.x86_64" {
 			assert.EqualValues(t, dash.FlavorGodotPck, c.Flavor)
@@ -520,4 +523,9 @@ func Test_ProbeBudget(t *testing.T) {
 	_, m = configureEngine(t, "godot", dash.ConfigureParams{MaxProbeBytes: 4096})
 	m.expect(t, "game.pck", dash.FlavorGodotPck, dash.EngineGodot, "4.2.1")
 	m.expect(t, "embedded/Game.exe", dash.FlavorNativeWindows, dash.EngineGodot, "3.5.2")
+
+	// once the magic pass has spent most of the budget, the full tail
+	// window no longer fits, but a 12-byte trailer check still must
+	_, m = configureEngine(t, "godot", dash.ConfigureParams{MaxProbeBytes: 150 << 10})
+	m.expect(t, "bigembedded/game.x86_64#godot-pck", dash.FlavorGodotPck, dash.EngineGodot, "4.3.0")
 }

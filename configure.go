@@ -133,8 +133,11 @@ type ConfigureParams struct {
 	Filter tlc.FilterFunc
 	Stats  *VerdictStats
 
-	// MaxProbeBytes caps how much of any single file sniffing may read.
-	// Zero means DefaultMaxProbeBytes.
+	// MaxProbeBytes caps how many distinct bytes of any single file
+	// sniffing and engine detection together may read. Zero means
+	// DefaultMaxProbeBytes. The magic matchers read a 128 KiB window at a
+	// time, so values below that stop executables from being recognized
+	// at all.
 	MaxProbeBytes int64
 
 	// DeepProbe fills the dependency record of native candidates
