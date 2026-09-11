@@ -21,7 +21,7 @@ import (
 // pass of Configure runs per file; engine detection needs the whole folder
 // and only happens in Configure.
 func Sniff(r io.ReadSeeker, name string, size int64) (*Candidate, error) {
-	return sniff(newProbeReader(r, size, 0), name, size)
+	return sniff(newProbeReader(r, size, newProbeBudget(0)), name, size)
 }
 
 func sniff(r *probeReader, name string, size int64) (*Candidate, error) {
@@ -676,6 +676,21 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 		return true
 	})
 
+	// engine payloads the host has no runtime for are data files: they lose
+	// to anything else right away, before the depth cutoff or the html rule
+	// could let a project folder shadow the launcher inside it
+	{
+		payloadCandidates := selectByFunc(compatibleCandidates, func(c *Candidate) bool {
+			return enginePayloadFlavors[c.Flavor]
+		})
+		if len(payloadCandidates) > 0 && len(payloadCandidates) < len(compatibleCandidates) {
+			consumer.Debugf("Has %d engine payload candidates, but %d others - excluding payloads", len(payloadCandidates), len(compatibleCandidates)-len(payloadCandidates))
+			compatibleCandidates = selectByFunc(compatibleCandidates, func(c *Candidate) bool {
+				return !enginePayloadFlavors[c.Flavor]
+			})
+		}
+	}
+
 	bestCandidates := compatibleCandidates
 
 	if len(bestCandidates) == 1 {
@@ -890,20 +905,6 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 			consumer.Debugf("Has %d HTML candidates, but %d non-HTML candidates - excluding HTML candidates", len(htmlCandidates), len(bestCandidates)-len(htmlCandidates))
 			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
 				return c.Flavor != FlavorHTML
-			})
-		}
-	}
-
-	// everywhere, engine payloads lose if there's anything else good: on a
-	// host with no runtime for them they are data files
-	{
-		payloadCandidates := selectByFunc(bestCandidates, func(c *Candidate) bool {
-			return enginePayloadFlavors[c.Flavor]
-		})
-		if len(payloadCandidates) > 0 && len(payloadCandidates) < len(bestCandidates) {
-			consumer.Debugf("Has %d engine payload candidates, but %d others - excluding payloads", len(payloadCandidates), len(bestCandidates)-len(payloadCandidates))
-			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
-				return !enginePayloadFlavors[c.Flavor]
 			})
 		}
 	}

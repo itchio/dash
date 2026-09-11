@@ -37,6 +37,8 @@ type scan struct {
 	// last tailWindow bytes of files the detectors looked at, so the five
 	// trailer checks on every executable cost one open, not five
 	tails map[int][]byte
+	// per-file read budgets, shared by every open of the same file
+	budgets map[int]*probeBudget
 }
 
 // tailWindow covers a zip end-of-central-directory record with the
@@ -94,13 +96,23 @@ func (s *scan) hasDir(lowerPath string) bool {
 }
 
 // open returns a budgeted reader for a file. The pool caches one open
-// reader, so callers must finish with it before opening another.
+// reader, so callers must finish with it before opening another. The
+// budget is per file, not per open: MaxProbeBytes caps the distinct bytes
+// every sniffer and detector together may read from one file.
 func (s *scan) open(index int) (*probeReader, error) {
 	r, err := s.pool.GetReadSeeker(int64(index))
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening %s", s.container.Files[index].Path)
 	}
-	return newProbeReader(r, s.pool.GetSize(int64(index)), s.params.MaxProbeBytes), nil
+	budget, ok := s.budgets[index]
+	if !ok {
+		if s.budgets == nil {
+			s.budgets = make(map[int]*probeBudget)
+		}
+		budget = newProbeBudget(s.params.MaxProbeBytes)
+		s.budgets[index] = budget
+	}
+	return newProbeReader(r, s.pool.GetSize(int64(index)), budget), nil
 }
 
 // openRaw returns an unbudgeted reader, for the deep probe only.

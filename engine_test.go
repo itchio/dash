@@ -293,6 +293,18 @@ func Test_Renpy(t *testing.T) {
 	assert.ElementsMatch(t, []string{"MyGame/MyGame.sh", "New/New.sh", "MyGame", "Old", "New"}, candidatePaths(rt))
 }
 
+func Test_PayloadFolderNeverShadowsLauncher(t *testing.T) {
+	// the folder is depth 1, the launcher depth 3: without a runtime the
+	// folder is a data file and must not win on depth
+	v, m := configureEngine(t, "renpy-deep")
+	m.expect(t, ".", dash.FlavorRenpy, dash.EngineRenpy, "7")
+	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
+	assert.EqualValues(t, []string{"lib/linux-x86_64/Deep"}, candidatePaths(linux))
+
+	rt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorRenpy}})
+	assert.ElementsMatch(t, []string{".", "lib/linux-x86_64/Deep"}, candidatePaths(rt))
+}
+
 func Test_RPGMaker(t *testing.T) {
 	_, m := configureEngine(t, "rpgmaker")
 
@@ -303,6 +315,13 @@ func Test_RPGMaker(t *testing.T) {
 
 	mz := m.expect(t, "mz", dash.FlavorRPGMakerMV, dash.EngineRPGMaker, "1.8.0")
 	assert.EqualValues(t, "mz", detail(mz, "variant"))
+
+	// without a runtime the html inside the project is what a desktop runs,
+	// the folder must not knock it out through the html rule
+	sub, err := dash.Configure(filepath.Join("testdata", "engines", "rpgmaker", "mz"), configureParams(t))
+	require.NoError(t, err)
+	win := sub.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
+	assert.EqualValues(t, []string{"index.html"}, candidatePaths(win))
 
 	xp := m.expect(t, "xp", dash.FlavorRPGMakerXP, dash.EngineRPGMaker, "1")
 	assert.EqualValues(t, "xp", detail(xp, "variant"))

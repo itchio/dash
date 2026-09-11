@@ -18,9 +18,16 @@ var errProbeBudget = errors.New("dash: per-file probe budget exhausted")
 // end of a large file costs only the trailer. A read that would push the
 // covered span over the budget fails as a whole.
 type probeReader struct {
-	rs        io.ReadSeeker
-	size      int64
-	pos       int64
+	rs   io.ReadSeeker
+	size int64
+	pos  int64
+	*probeBudget
+}
+
+// probeBudget is the accounting behind a probeReader. It outlives the
+// reader: the pool hands out one open file at a time, so a scan reopens
+// files between detectors and reattaches the same budget.
+type probeBudget struct {
 	remaining int64
 	// merged, sorted, non-overlapping [start, end) spans already charged
 	covered []span
@@ -28,16 +35,20 @@ type probeReader struct {
 
 type span struct{ start, end int64 }
 
+func newProbeBudget(budget int64) *probeBudget {
+	if budget <= 0 {
+		budget = DefaultMaxProbeBytes
+	}
+	return &probeBudget{remaining: budget}
+}
+
 var (
 	_ io.ReadSeeker = (*probeReader)(nil)
 	_ io.ReaderAt   = (*probeReader)(nil)
 )
 
-func newProbeReader(rs io.ReadSeeker, size int64, budget int64) *probeReader {
-	if budget <= 0 {
-		budget = DefaultMaxProbeBytes
-	}
-	return &probeReader{rs: rs, size: size, remaining: budget}
+func newProbeReader(rs io.ReadSeeker, size int64, budget *probeBudget) *probeReader {
+	return &probeReader{rs: rs, size: size, probeBudget: budget}
 }
 
 // charge records [start, end) as read, returning false (and recording
