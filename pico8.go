@@ -5,6 +5,8 @@ package dash
 //     .p8.png
 //   https://egordorichev.itch.io/penance
 //     .p8 text cart, version 11
+//   https://not-articulated.itch.io/urbanitas
+//     Picotron .p64.png cart
 
 import (
 	"bytes"
@@ -12,10 +14,12 @@ import (
 	"strings"
 )
 
-// pico8Detector finds cartridges. .p8 is text with a version line; .p8.png
-// hides the cart in pixel data and is trusted on its name alone.
+// pico8Detector finds PICO-8 and Picotron cartridges. The text forms (.p8,
+// .p64) start with a "<name> cartridge" line; the .png forms hide the cart
+// in pixel data and are trusted on their name alone.
 //
-// Details: "format" ("p8" or "png"), "confidence" ("ext" for png carts).
+// Details: "format" ("p8", "p64" or "png"), "confidence" ("ext" for png
+// carts).
 type pico8Detector struct{}
 
 var pico8VersionPattern = regexp.MustCompile(`(?m)^version (\d+)`)
@@ -27,6 +31,17 @@ func (pico8Detector) detect(s *scan) error {
 			info := &EngineInfo{Engine: EnginePico8}
 			info.detail("format", "png").detail("confidence", "ext")
 			s.addFileCandidate(index, FlavorPico8Cart, info)
+		case strings.HasSuffix(lower, ".p64.png"):
+			info := &EngineInfo{Engine: EnginePicotron}
+			info.detail("format", "png").detail("confidence", "ext")
+			s.addFileCandidate(index, FlavorPicotronCart, info)
+		case strings.HasSuffix(lower, ".p64"):
+			if !bytes.HasPrefix(s.readHead(index, 128), []byte("picotron cartridge")) {
+				continue
+			}
+			info := &EngineInfo{Engine: EnginePicotron}
+			info.detail("format", "p64")
+			s.addFileCandidate(index, FlavorPicotronCart, info)
 		case strings.HasSuffix(lower, ".p8"):
 			head := s.readHead(index, 128)
 			if !bytes.HasPrefix(head, []byte("pico-8 cartridge")) {

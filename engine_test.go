@@ -178,6 +178,12 @@ func Test_Pico8(t *testing.T) {
 	png := m.expect(t, "other.p8.png", dash.FlavorPico8Cart, dash.EnginePico8, "")
 	assert.EqualValues(t, "ext", detail(png, "confidence"))
 	assert.Nil(t, m["notes.p8"])
+
+	p64png := m.expect(t, "town.p64.png", dash.FlavorPicotronCart, dash.EnginePicotron, "")
+	assert.EqualValues(t, "ext", detail(p64png, "confidence"))
+	p64 := m.expect(t, "town.p64", dash.FlavorPicotronCart, dash.EnginePicotron, "")
+	assert.EqualValues(t, "p64", detail(p64, "format"))
+	assert.Nil(t, m["notes.p64"])
 }
 
 func Test_ROM(t *testing.T) {

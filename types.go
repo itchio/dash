@@ -90,6 +90,8 @@ const (
 	FlavorGameMakerData Flavor = "gamemaker-data"
 	// PICO-8 cartridge (.p8, .p8.png)
 	FlavorPico8Cart Flavor = "pico8-cart"
+	// Picotron cartridge (.p64, .p64.png)
+	FlavorPicotronCart Flavor = "picotron-cart"
 	// Ren'Py project: the folder holding game/
 	FlavorRenpy Flavor = "renpy"
 	// RPG Maker MV/MZ project: the folder holding js/ and index.html

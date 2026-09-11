@@ -12,6 +12,7 @@ const (
 	EngineGameMaker Engine = "gamemaker"
 	EngineLove      Engine = "love"
 	EnginePico8     Engine = "pico8"
+	EnginePicotron  Engine = "picotron"
 	EngineRenpy     Engine = "renpy"
 	EngineRPGMaker  Engine = "rpgmaker"
 	EngineAGS       Engine = "ags"
@@ -90,6 +91,7 @@ var PayloadFlavors = []Flavor{
 	FlavorGodotPck,
 	FlavorGameMakerData,
 	FlavorPico8Cart,
+	FlavorPicotronCart,
 	FlavorRenpy,
 	FlavorRPGMakerMV,
 	FlavorRPGMakerXP,
@@ -111,6 +113,7 @@ var enginePayloadFlavors = map[Flavor]bool{
 	FlavorGodotPck:      true,
 	FlavorGameMakerData: true,
 	FlavorPico8Cart:     true,
+	FlavorPicotronCart:  true,
 	FlavorRenpy:         true,
 	FlavorRPGMakerMV:    true,
 	FlavorRPGMakerXP:    true,

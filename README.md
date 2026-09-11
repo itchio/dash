@@ -10,7 +10,7 @@ and determines interesting launch targets such as:
   * Native Windows, Linux & macOS executables
   * HTML index files
   * .jar files, .love files, etc.
-  * Engine payloads: Godot packs, GameMaker data files, PICO-8 carts,
+  * Engine payloads: Godot packs, GameMaker data files, PICO-8 and Picotron carts,
     Ren'Py and RPG Maker folders, AGS games, WADs, SWFs, DOS folders,
     console ROMs and more (see the `Flavor` constants)
 
