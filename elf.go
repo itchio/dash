@@ -131,3 +131,21 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 	}
 	return nil
 }
+
+// ProbeELF returns the full Linux record for one executable: what the
+// magic pass reads from the header plus what DeepProbe adds. It is for
+// tools that look at a single file rather than an install folder.
+func ProbeELF(r io.ReadSeeker) (*LinuxInfo, error) {
+	if _, err := r.Seek(0, io.SeekStart); err != nil {
+		return nil, err
+	}
+	hdr := make([]byte, 20)
+	if _, err := io.ReadFull(r, hdr); err != nil {
+		return nil, err
+	}
+	info := &LinuxInfo{Arch: elfHeaderArch(hdr), OS: elfHeaderOS(hdr)}
+	if err := probeELF(&readerAtFromSeeker{r}, info); err != nil {
+		return nil, err
+	}
+	return info, nil
+}

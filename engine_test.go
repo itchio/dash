@@ -112,6 +112,14 @@ func Test_DeepProbe(t *testing.T) {
 	v, err = dash.Configure(root, dash.ConfigureParams{Consumer: makeConsumer(t)})
 	require.NoError(t, err)
 	assert.Empty(t, v.Candidates[0].LinuxInfo.Imports)
+
+	// the single-file probe gives the same record
+	f, err := os.Open(filepath.Join(root, "sh"))
+	require.NoError(t, err)
+	defer f.Close()
+	single, err := dash.ProbeELF(f)
+	require.NoError(t, err)
+	assert.EqualValues(t, info, single)
 }
 
 func Test_Godot(t *testing.T) {
