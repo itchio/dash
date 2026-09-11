@@ -404,6 +404,12 @@ func (s *scan) deepProbe() {
 			if c.WindowsInfo.Arch == "" {
 				c.WindowsInfo.Arch = Arch(info.Arch)
 			}
+			if len(info.VersionProperties) > 0 {
+				c.WindowsInfo.VersionProperties = info.VersionProperties
+			}
+			if info.AssemblyInfo != nil {
+				c.WindowsInfo.RequestedExecutionLevel = info.AssemblyInfo.RequestedExecutionLevel
+			}
 		}
 	}
 }

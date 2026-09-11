@@ -176,6 +176,15 @@ type WindowsInfo struct {
 	// Imported DLLs, only filled when ConfigureParams.DeepProbe is set
 	// @optional
 	Imports []string `json:"imports,omitempty"`
+	// Strings from the VS_VERSIONINFO resource (ProductName, FileVersion,
+	// CompanyName, ...). Only filled when ConfigureParams.DeepProbe is set.
+	// @optional
+	VersionProperties map[string]string `json:"versionProperties,omitempty"`
+	// requestedExecutionLevel from the embedded manifest ("asInvoker",
+	// "requireAdministrator", "highestAvailable"). Only filled when
+	// ConfigureParams.DeepProbe is set.
+	// @optional
+	RequestedExecutionLevel string `json:"requestedExecutionLevel,omitempty"`
 }
 
 // Which particular type of windows-specific installer
