@@ -23,7 +23,11 @@ payload flavors list them in `FilterParams.Runtimes` (`"godot-pck"`,
 `"rom:snes"`, ...) so those candidates survive next to natives.
 
 `ConfigureParams.DeepProbe` additionally records native dependencies
-(imported libraries, glibc version) for server-side use.
+(imported libraries, glibc version) for server-side use, and for Linux
+how the executable reaches a display: the SDL it imports or bundles,
+whether a bundled SDL can be swapped for the host's through its dynamic
+API, and the windowing libraries it names. That is what says whether a
+build can run on a device without X11 or Wayland.
 
 ## License
 

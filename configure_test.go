@@ -7,6 +7,7 @@ import (
 	"github.com/itchio/dash"
 	"github.com/itchio/headway/state"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func makeConsumer(t *testing.T) *state.Consumer {
@@ -425,5 +426,63 @@ func Test_ConfigureLinuxArch(t *testing.T) {
 		} else {
 			assert.Empty(t, c.LinuxInfo.OS)
 		}
+	}
+}
+
+func Test_ConfigureLinuxSDL(t *testing.T) {
+	v, err := dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	require.NoError(t, err)
+	byPath := map[string]*dash.LinuxInfo{}
+	for _, c := range v.Candidates {
+		if c.Flavor != dash.FlavorNativeLinux {
+			continue
+		}
+		assert.EqualValues(t, dash.ArchArm64, c.LinuxInfo.Arch)
+		byPath[c.Path] = c.LinuxInfo
+	}
+	require.Len(t, byPath, 6)
+
+	bundled := byPath["sdl2-bundled"]
+	assert.EqualValues(t, "2", bundled.SDL)
+	assert.True(t, bundled.SDLBundled)
+	assert.True(t, bundled.SDLDynamicAPI)
+	assert.EqualValues(t, []string{"egl", "kmsdrm", "wayland", "x11"}, bundled.Display)
+	assert.True(t, bundled.Symbols)
+	assert.True(t, bundled.Static)
+
+	stripped := byPath["sdl2-bundled-stripped"]
+	assert.True(t, stripped.SDLDynamicAPI)
+	assert.False(t, stripped.Symbols)
+
+	fixed := byPath["sdl2-bundled-fixed"]
+	assert.EqualValues(t, "2", fixed.SDL)
+	assert.True(t, fixed.SDLBundled)
+	assert.False(t, fixed.SDLDynamicAPI)
+	assert.EqualValues(t, []string{"gl", "x11"}, fixed.Display)
+
+	sdl3 := byPath["sdl3-bundled"]
+	assert.EqualValues(t, "3", sdl3.SDL)
+	assert.True(t, sdl3.SDLDynamicAPI)
+
+	shared := byPath["sdl2-shared"]
+	assert.EqualValues(t, "2", shared.SDL)
+	assert.False(t, shared.SDLBundled)
+	assert.False(t, shared.SDLDynamicAPI)
+	assert.EqualValues(t, []string{"libSDL2-2.0.so.0"}, shared.Imports)
+	assert.Empty(t, shared.Display)
+
+	glfw := byPath["glfw-x11"]
+	assert.Empty(t, glfw.SDL)
+	assert.EqualValues(t, []string{"gl", "glfw", "x11"}, glfw.Display)
+
+	// without the flag none of it is read
+	v, err = dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t)})
+	require.NoError(t, err)
+	for _, c := range v.Candidates {
+		if c.Flavor != dash.FlavorNativeLinux {
+			continue
+		}
+		assert.Empty(t, c.LinuxInfo.SDL)
+		assert.Empty(t, c.LinuxInfo.Display)
 	}
 }

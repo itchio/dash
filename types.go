@@ -231,6 +231,28 @@ type LinuxInfo struct {
 	// Only filled when ConfigureParams.DeepProbe is set.
 	// @optional
 	Imports []string `json:"imports,omitempty"`
+	// SDL major version the executable uses, "2" or "3": imported, or
+	// linked in (see SDLBundled). Only filled when DeepProbe is set.
+	// @optional
+	SDL string `json:"sdl,omitempty"`
+	// True when SDL is linked into the executable rather than imported,
+	// so it only has the display backends it was built with.
+	// @optional
+	SDLBundled bool `json:"sdlBundled,omitempty"`
+	// True when a bundled SDL kept its dynamic API, the hook that lets a
+	// host substitute its own SDL at load time (SDL_DYNAMIC_API).
+	// @optional
+	SDLDynamicAPI bool `json:"sdlDynamicApi,omitempty"`
+	// Windowing and graphics libraries the executable, or the SDL it
+	// bundles, can load: "x11", "wayland", "kmsdrm", "glfw", "egl", "gl",
+	// "gles", "vulkan". From DT_NEEDED and the library names it carries
+	// for dlopen. Only filled when DeepProbe is set.
+	// @optional
+	Display []string `json:"display,omitempty"`
+	// True when the executable keeps its symbol table.
+	// Only filled when DeepProbe is set.
+	// @optional
+	Symbols bool `json:"symbols,omitempty"`
 }
 
 // Contains information specific to Love2D bundles

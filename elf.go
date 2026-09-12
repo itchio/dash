@@ -5,11 +5,13 @@ package dash
 //     i386, amd64, arm64, arm, riscv64, FreeBSD and Haiku builds
 
 import (
+	"bytes"
 	"debug/elf"
 	"encoding/binary"
 	"io"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/itchio/spellbook"
@@ -116,6 +118,9 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 		info.OS = "haiku"
 	}
 
+	info.Symbols = ef.Section(".symtab") != nil
+	probeWindowing(ef, info)
+
 	syms, err := ef.ImportedSymbols()
 	if err != nil {
 		return nil
@@ -130,6 +135,71 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 		}
 	}
 	return nil
+}
+
+// Display libraries by the file names they are linked or dlopened by. A
+// bundled SDL names the ones for every backend it was built with.
+var displayLibraries = []struct{ prefix, tag string }{
+	{"libX11.so", "x11"},
+	{"libwayland-client.so", "wayland"},
+	{"libgbm.so", "kmsdrm"},
+	{"libglfw.so", "glfw"},
+	{"libEGL.so", "egl"},
+	{"libGL.so", "gl"},
+	{"libGLESv2.so", "gles"},
+	{"libvulkan.so", "vulkan"},
+}
+
+// Read-only data larger than this is not searched for library names.
+const maxRodataScan = 256 << 20
+
+// probeWindowing records how the executable reaches a display: the SDL
+// it imports or bundles, and the display libraries it names. A bundled
+// SDL shows in the strings it keeps for its own use: the name of the
+// dynamic API variable, or its video driver hint without it.
+func probeWindowing(ef *elf.File, info *LinuxInfo) {
+	found := map[string]bool{}
+	for _, lib := range info.Imports {
+		switch {
+		case strings.HasPrefix(lib, "libSDL2-2.0.so"):
+			info.SDL = "2"
+		case strings.HasPrefix(lib, "libSDL3.so"):
+			info.SDL = "3"
+		}
+		for _, d := range displayLibraries {
+			if strings.HasPrefix(lib, d.prefix) {
+				found[d.tag] = true
+			}
+		}
+	}
+
+	var data []byte
+	if s := ef.Section(".rodata"); s != nil && s.Size <= maxRodataScan {
+		data, _ = s.Data()
+	}
+	has := func(needle string) bool { return bytes.Contains(data, []byte(needle)) }
+	for _, d := range displayLibraries {
+		if has(d.prefix) {
+			found[d.tag] = true
+		}
+	}
+	if info.SDL == "" {
+		switch {
+		case has("SDL_DYNAMIC_API"):
+			info.SDL, info.SDLBundled, info.SDLDynamicAPI = "2", true, true
+		case has("SDL3_DYNAMIC_API"):
+			info.SDL, info.SDLBundled, info.SDLDynamicAPI = "3", true, true
+		case has("SDL_VIDEODRIVER"):
+			info.SDL, info.SDLBundled = "2", true
+		case has("SDL_VIDEO_DRIVER"):
+			info.SDL, info.SDLBundled = "3", true
+		}
+	}
+
+	for tag := range found {
+		info.Display = append(info.Display, tag)
+	}
+	sort.Strings(info.Display)
 }
 
 // ProbeELF returns the full Linux record for one executable: what the
