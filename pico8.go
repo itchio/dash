@@ -20,7 +20,8 @@ import (
 // .p64) start with a "<name> cartridge" line; the .png forms hide the cart
 // in pixel data and are trusted on their name alone. A PICO-8 web export
 // carries the cart ROM as a byte array in its .js, so that file is a cart
-// too, one a runner has to decode first.
+// too, one a runner has to decode first; its index.html is annotated like
+// any other engine's web export.
 //
 // Details: "format" ("p8", "p64", "png", or "js" for a web export's
 // script), "confidence" ("ext" for png carts), "carts" (how many 32 KiB
@@ -88,6 +89,7 @@ func (pico8Detector) detect(s *scan) error {
 				info.detail("carts", n)
 			}
 			s.addFileCandidate(index, FlavorPico8Cart, info)
+			c.setEngine(&EngineInfo{Engine: EnginePico8, Version: version})
 		}
 	}
 	return nil

@@ -193,11 +193,12 @@ func Test_Pico8(t *testing.T) {
 	assert.EqualValues(t, "p64", detail(p64, "format"))
 	assert.Nil(t, m["notes.p64"])
 
-	// a web export: the cart lives in the .js, the html stays plain
+	// a web export: the cart lives in the .js, the html is annotated like
+	// other engines' web exports
 	js := m.expect(t, "web/game.js", dash.FlavorPico8Cart, dash.EnginePico8, "0.2.6")
 	assert.EqualValues(t, "js", detail(js, "format"))
 	assert.EqualValues(t, 2, detail(js, "carts"))
-	m.expect(t, "web/index.html", dash.FlavorHTML, "", "")
+	m.expect(t, "web/index.html", dash.FlavorHTML, dash.EnginePico8, "0.2.6")
 	assert.Nil(t, m["web/lib.js"])
 }
 
