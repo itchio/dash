@@ -44,12 +44,43 @@ func sniffELF(r *probeReader, name string, size int64) (*Candidate, error) {
 		LinuxInfo: &LinuxInfo{},
 	}
 
-	hdr := r.readHead(20)
+	hdr := r.readHead(elfHeaderLen)
 	result.Arch = elfHeaderArch(hdr)
 	result.LinuxInfo.Arch = result.Arch
 	result.LinuxInfo.OS = elfHeaderOS(hdr)
+	result.LinuxInfo.ABI = elfHeaderABI(hdr)
 
 	return result, nil
+}
+
+// elfHeaderLen covers e_flags in a 32-bit header (offset 0x24), which is
+// all the header reads need.
+const elfHeaderLen = 40
+
+// ARM EABI float convention bits in e_flags
+const (
+	elfARMFloatSoft = 0x200
+	elfARMFloatHard = 0x400
+)
+
+// elfHeaderABI names the float ABI of a 32-bit ARM executable. Other
+// machines have no such split worth recording.
+func elfHeaderABI(hdr []byte) string {
+	if len(hdr) < elfHeaderLen || elfHeaderArch(hdr) != ArchArm {
+		return ""
+	}
+	var order binary.ByteOrder = binary.LittleEndian
+	if hdr[elf.EI_DATA] == byte(elf.ELFDATA2MSB) {
+		order = binary.BigEndian
+	}
+	flags := order.Uint32(hdr[0x24:0x28])
+	switch {
+	case flags&elfARMFloatHard != 0:
+		return "eabihf"
+	case flags&elfARMFloatSoft != 0:
+		return "eabi"
+	}
+	return ""
 }
 
 // elfHeaderArch reads e_machine, honoring the byte order declared in
@@ -119,6 +150,16 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 	}
 
 	info.Symbols = ef.Section(".symtab") != nil
+	for _, p := range ef.Progs {
+		if p.Type != elf.PT_INTERP || p.Filesz == 0 || p.Filesz > 256 {
+			continue
+		}
+		buf := make([]byte, p.Filesz)
+		if _, err := p.ReadAt(buf, 0); err == nil {
+			info.Interpreter = string(bytes.TrimRight(buf, "\x00"))
+		}
+		break
+	}
 	probeWindowing(ef, info)
 
 	syms, err := ef.ImportedSymbols()
@@ -209,11 +250,11 @@ func ProbeELF(r io.ReadSeeker) (*LinuxInfo, error) {
 	if _, err := r.Seek(0, io.SeekStart); err != nil {
 		return nil, err
 	}
-	hdr := make([]byte, 20)
-	if _, err := io.ReadFull(r, hdr); err != nil {
+	hdr := make([]byte, elfHeaderLen)
+	if n, err := io.ReadFull(r, hdr); err != nil && n < 20 {
 		return nil, err
 	}
-	info := &LinuxInfo{Arch: elfHeaderArch(hdr), OS: elfHeaderOS(hdr)}
+	info := &LinuxInfo{Arch: elfHeaderArch(hdr), OS: elfHeaderOS(hdr), ABI: elfHeaderABI(hdr)}
 	if err := probeELF(&readerAtFromSeeker{r}, info); err != nil {
 		return nil, err
 	}

@@ -416,17 +416,24 @@ func Test_ConfigureLinuxArch(t *testing.T) {
 		"game.x86_64":  dash.ArchAmd64,
 		"game.x86":     dash.Arch386,
 		"game.armv7":   dash.ArchArm,
+		"game.armel":   dash.ArchArm,
 		"game.riscv64": dash.ArchRiscv64,
 		"game.freebsd": dash.ArchAmd64,
 	}, byPath)
 
+	abis := make(map[string]string)
 	for _, c := range v.Candidates {
 		if c.Path == "game.freebsd" {
 			assert.EqualValues(t, "freebsd", c.LinuxInfo.OS, "OS ABI byte names the BSDs")
 		} else {
 			assert.Empty(t, c.LinuxInfo.OS)
 		}
+		abis[c.Path] = c.LinuxInfo.ABI
 	}
+	assert.EqualValues(t, "eabihf", abis["game.armv7"], "hard-float flag in e_flags")
+	assert.EqualValues(t, "eabi", abis["game.armel"], "soft-float flag in e_flags")
+	assert.Empty(t, abis["game.aarch64"], "no float ABI split outside 32-bit ARM")
+	assert.Empty(t, abis["game.x86_64"])
 }
 
 func Test_ConfigureLinuxSDL(t *testing.T) {
@@ -485,4 +492,59 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 		assert.Empty(t, c.LinuxInfo.SDL)
 		assert.Empty(t, c.LinuxInfo.Display)
 	}
+}
+
+func Test_FilterLinuxArch(t *testing.T) {
+	// one binary per architecture, plus a FreeBSD one that only looks like linux
+	root := filepath.Join("testdata", "linux-arch")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	paths := func(v dash.Verdict) []string {
+		var res []string
+		for _, c := range v.Candidates {
+			res = append(res, c.Path)
+		}
+		return res
+	}
+
+	cases := map[string][]string{
+		"amd64":   {"game.x86_64"},
+		"386":     {"game.x86"},
+		"arm64":   {"game.aarch64"},
+		"arm":     {"game.armv7", "game.armel"},
+		"riscv64": {"game.riscv64"},
+	}
+	for arch, expected := range cases {
+		f := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: arch})
+		assert.ElementsMatch(t, expected, paths(f), "linux host arch %s", arch)
+	}
+
+	// the FreeBSD build is never offered to a linux host, even without an arch
+	f := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux"})
+	assert.NotContains(t, paths(f), "game.freebsd")
+}
+
+func Test_FilterLinuxArchFallback(t *testing.T) {
+	// a 64-bit host runs the 32-bit build of its own family when that is
+	// all there is
+	root := filepath.Join("testdata", "linux-arch-fallback")
+
+	v, err := dash.Configure(root, configureParams(t))
+	assert.NoError(t, err, "walks without problems")
+
+	paths := func(v dash.Verdict) []string {
+		var res []string
+		for _, c := range v.Candidates {
+			res = append(res, c.Path)
+		}
+		return res
+	}
+
+	assert.ElementsMatch(t, []string{"game.x86"}, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})))
+	assert.ElementsMatch(t, []string{"game.armv7"}, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64"})))
+	assert.ElementsMatch(t, []string{"game.x86"}, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "386"})))
+	assert.ElementsMatch(t, []string{"game.armv7"}, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm"})))
+	assert.Empty(t, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "riscv64"})))
 }

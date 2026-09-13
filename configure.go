@@ -541,10 +541,18 @@ type FilterParams struct {
 // supportsRuntime reports whether a payload candidate is covered by the
 // host's runtime list.
 func (params FilterParams) supportsRuntime(c *Candidate) bool {
+	return MatchesRuntime(c, params.Runtimes)
+}
+
+// MatchesRuntime reports whether a candidate is a payload one of the listed
+// runtimes can run: its flavor is listed, or it is a ROM and "rom" or
+// "rom:<system>" is listed. Consumers deciding how to launch a candidate
+// should use this rather than compare flavors themselves.
+func MatchesRuntime(c *Candidate, runtimes []Flavor) bool {
 	if !c.IsPayload() {
 		return false
 	}
-	for _, r := range params.Runtimes {
+	for _, r := range runtimes {
 		if r == c.Flavor {
 			return true
 		}
@@ -553,6 +561,28 @@ func (params FilterParams) supportsRuntime(c *Candidate) bool {
 		}
 	}
 	return false
+}
+
+// linuxArchRunnable reports whether a Linux host of one architecture can
+// exec a binary of another without emulation. Unknown binary arches are
+// given the benefit of the doubt.
+func linuxArchRunnable(host string, bin Arch) bool {
+	if bin == "" {
+		return true
+	}
+	switch Arch(host) {
+	case ArchAmd64:
+		return bin == ArchAmd64 || bin == Arch386
+	case Arch386:
+		return bin == Arch386
+	case ArchArm64:
+		return bin == ArchArm64 || bin == ArchArm
+	case ArchArm:
+		return bin == ArchArm
+	case ArchRiscv64:
+		return bin == ArchRiscv64
+	}
+	return true
 }
 
 func romSystem(c *Candidate) string {
@@ -635,8 +665,14 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 				keep = false
 			}
 
-			if hasArch("386") && (c.Arch != "" && c.Arch != Arch386) {
-				consumer.Debugf("Excluding (%s) - not 32-bit, but arch filter is (%s)", c.Path, archFilter)
+			if archFilter != "" && !linuxArchRunnable(archFilter, c.Arch) {
+				consumer.Debugf("Excluding (%s) - %s binary, arch filter is (%s)", c.Path, c.Arch, archFilter)
+				keep = false
+			}
+
+			// BSD and Haiku binaries carry the ELF flavor but not the ABI
+			if hasOS("linux") && c.LinuxInfo != nil && c.LinuxInfo.OS != "" {
+				consumer.Debugf("Excluding (%s) - built for %s, not linux", c.Path, c.LinuxInfo.OS)
 				keep = false
 			}
 		case FlavorNativeWindows:
@@ -772,19 +808,20 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 		}
 	}
 
-	if hasOS("linux") && hasArch("amd64") {
-		consumer.Debugf("Oh boy, we're on 64-bit Linux, let's filter some stuff")
+	// on linux, binaries built for the host's own architecture beat the
+	// 32-bit ones it could also run (386 on amd64, arm on arm64)
+	if hasOS("linux") && archFilter != "" && archFilter != "386" && archFilter != string(ArchArm) {
+		consumer.Debugf("On %s Linux, let's filter some stuff", archFilter)
 
 		linuxCandidates := selectByFlavor(bestCandidates, FlavorNativeLinux)
-		linux64Candidates := selectByArch(linuxCandidates, ArchAmd64)
+		linuxExactCandidates := selectByArch(linuxCandidates, Arch(archFilter))
 
-		if len(linux64Candidates) > 0 {
-			consumer.Debugf("Found some native 64-bit Linux candidates, excluding all others")
+		if len(linuxExactCandidates) > 0 {
+			consumer.Debugf("Found some native %s Linux candidates, excluding all others", archFilter)
 
-			// on linux 64, 64-bit binaries win
-			bestCandidates = linux64Candidates
+			bestCandidates = linuxExactCandidates
 		} else {
-			consumer.Debugf("No native 64-bit Linux candidates, looking for jars")
+			consumer.Debugf("No native %s Linux candidates, looking for jars", archFilter)
 
 			// if no 64-bit binaries, jars win
 			jarCandidates := selectByFlavor(bestCandidates, FlavorJar)
@@ -877,6 +914,23 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 			bestCandidates = guiCandidates
 		}
 
+		if len(bestCandidates) == 1 {
+			v.Candidates = bestCandidates
+			return v
+		}
+	}
+
+	// on Windows on ARM, x86 builds run through emulation: a native arm64
+	// build wins when there is one
+	if hasOS("windows") && hasArch("arm64") {
+		windowsCandidates := selectByFlavor(bestCandidates, FlavorNativeWindows)
+		armCandidates := selectByArch(windowsCandidates, ArchArm64)
+		if len(armCandidates) > 0 {
+			consumer.Debugf("Found native arm64 Windows candidates, excluding emulated ones")
+			bestCandidates = selectByFunc(bestCandidates, func(c *Candidate) bool {
+				return c.Flavor != FlavorNativeWindows || c.Arch == ArchArm64
+			})
+		}
 		if len(bestCandidates) == 1 {
 			v.Candidates = bestCandidates
 			return v

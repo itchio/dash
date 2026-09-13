@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/itchio/dash"
@@ -106,6 +107,7 @@ func Test_DeepProbe(t *testing.T) {
 	require.NotNil(t, info)
 	assert.False(t, info.Static)
 	assert.NotEmpty(t, info.Imports)
+	assert.True(t, strings.HasPrefix(info.Interpreter, "/"), "PT_INTERP names the loader")
 	t.Logf("imports=%v glibc=%s", info.Imports, info.GlibcVersion)
 
 	// without the flag, the record stays at the header
@@ -146,16 +148,18 @@ func Test_GodotFilter(t *testing.T) {
 	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
 	assert.EqualValues(t, []string{"game.x86_64"}, candidatePaths(linux), "top-level native wins on depth")
 
-	// handheld with a Godot runtime: every pck survives next to the native
+	// arm64 handheld with a Godot runtime: the amd64 natives cannot run
+	// there, every pck can
 	frt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorGodotPck}})
-	// the deeper native loses on depth as usual; its embedded pck is a
-	// runtime candidate and stays
-	assert.ElementsMatch(t, []string{"game.x86_64", "game.pck", "embedded/Game.exe", "Mac.app/Contents/Resources/game.pck", "bigembedded/game.x86_64"}, candidatePaths(frt))
+	assert.ElementsMatch(t, []string{"game.pck", "embedded/Game.exe", "Mac.app/Contents/Resources/game.pck", "bigembedded/game.x86_64"}, candidatePaths(frt))
 	for _, c := range frt.Candidates {
-		if c.Path != "game.x86_64" {
-			assert.EqualValues(t, dash.FlavorGodotPck, c.Flavor)
-		}
+		assert.EqualValues(t, dash.FlavorGodotPck, c.Flavor)
 	}
+
+	// same runtime on an amd64 desktop: the native comes along
+	desktopRT := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64", Runtimes: []dash.Flavor{dash.FlavorGodotPck}})
+	assert.Contains(t, candidatePaths(desktopRT), "game.x86_64")
+	assert.Contains(t, candidatePaths(desktopRT), "game.pck")
 
 	// runtime for something else: no change
 	other := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64", Runtimes: []dash.Flavor{dash.FlavorPico8Cart}})
@@ -326,8 +330,12 @@ func Test_PayloadFolderNeverShadowsLauncher(t *testing.T) {
 	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
 	assert.EqualValues(t, []string{"lib/linux-x86_64/Deep"}, candidatePaths(linux))
 
-	rt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorRenpy}})
+	rt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64", Runtimes: []dash.Flavor{dash.FlavorRenpy}})
 	assert.ElementsMatch(t, []string{".", "lib/linux-x86_64/Deep"}, candidatePaths(rt))
+
+	// an arm64 host cannot run the amd64 launcher, the folder is all it gets
+	arm := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorRenpy}})
+	assert.EqualValues(t, []string{"."}, candidatePaths(arm))
 }
 
 func Test_RPGMaker(t *testing.T) {

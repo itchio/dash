@@ -219,6 +219,16 @@ type LinuxInfo struct {
 	// imports (deep probe only). Such builds still get the linux flavor.
 	// @optional
 	OS string `json:"os,omitempty"`
+	// Calling convention for 32-bit ARM, from the ELF header flags:
+	// "eabihf" (hard-float, what Raspberry Pi and armhf distributions
+	// build) or "eabi" (soft-float). Empty for other architectures.
+	// @optional
+	ABI string `json:"abi,omitempty"`
+	// Program interpreter (PT_INTERP), such as /lib/ld-linux-armhf.so.3
+	// or /lib/ld-musl-aarch64.so.1. Names the C library and ABI the
+	// executable was linked against. Only filled when DeepProbe is set.
+	// @optional
+	Interpreter string `json:"interpreter,omitempty"`
 	// True when the executable has no dynamic section (no interpreter, no
 	// DT_NEEDED). Only meaningful when ConfigureParams.DeepProbe is set.
 	// @optional
