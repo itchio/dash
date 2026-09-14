@@ -23,6 +23,7 @@ const (
 	EngineSolarus   Engine = "solarus"
 	EngineTIC80     Engine = "tic80"
 	EngineOpenBOR   Engine = "openbor"
+	EnginePlaydate  Engine = "playdate"
 	// ROM images: the console lives in Details["system"]
 	EngineROM       Engine = "rom"
 	EngineFNA       Engine = "fna"
@@ -105,6 +106,7 @@ var PayloadFlavors = []Flavor{
 	FlavorTIC80Cart,
 	FlavorOpenBORPak,
 	FlavorROM,
+	FlavorPlaydatePdx,
 }
 
 // enginePayloadFlavors are the payload flavors introduced with engine
@@ -127,6 +129,7 @@ var enginePayloadFlavors = map[Flavor]bool{
 	FlavorTIC80Cart:     true,
 	FlavorOpenBORPak:    true,
 	FlavorROM:           true,
+	FlavorPlaydatePdx:   true,
 }
 
 // IsPayload reports whether a candidate needs an external runtime.

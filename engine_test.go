@@ -560,3 +560,48 @@ func Test_ProbeBudget(t *testing.T) {
 	_, m = configureEngine(t, "godot", dash.ConfigureParams{MaxProbeBytes: 150 << 10})
 	m.expect(t, "bigembedded/game.x86_64#godot-pck", dash.FlavorGodotPck, dash.EngineGodot, "4.3.0")
 }
+
+func Test_Playdate(t *testing.T) {
+	v, m := configureEngine(t, "playdate")
+
+	lua := m.expect(t, "Lua.pdx", dash.FlavorPlaydatePdx, dash.EnginePlaydate, "3.1.1")
+	assert.EqualValues(t, 2, lua.Depth, "a bundle ranks with the files directly inside it")
+	assert.EqualValues(t, true, detail(lua, "lua"))
+	assert.EqualValues(t, false, detail(lua, "native"))
+	assert.Nil(t, detail(lua, "simulator"))
+	assert.Nil(t, detail(lua, "pulp"))
+	assert.Nil(t, detail(lua, "confidence"))
+	assert.EqualValues(t, "com.example.lua", detail(lua, "bundleId"))
+	assert.EqualValues(t, "Lua Game", detail(lua, "name"))
+	assert.EqualValues(t, "0.3", detail(lua, "gameVersion"))
+	assert.EqualValues(t, "3", detail(lua, "buildNumber"))
+
+	native := m.expect(t, "Native.pdx", dash.FlavorPlaydatePdx, dash.EnginePlaydate, "3.0.5")
+	assert.EqualValues(t, false, detail(native, "lua"))
+	assert.EqualValues(t, true, detail(native, "native"))
+	assert.EqualValues(t, []string{"windows"}, detail(native, "simulator"))
+	assert.Nil(t, m["Native.pdx/pdex.dll"], "a simulator plugin is not a launch target")
+
+	pulp := m.expect(t, "Pulp.pdx", dash.FlavorPlaydatePdx, dash.EnginePlaydate, "1.10.0")
+	assert.EqualValues(t, true, detail(pulp, "pulp"))
+
+	// the magic vouches for a folder without the .pdx name
+	m.expect(t, "renamed", dash.FlavorPlaydatePdx, dash.EnginePlaydate, "2.6.1")
+	// the name vouches for a folder without anything runnable, weakly
+	empty := m.expect(t, "Empty.pdx", dash.FlavorPlaydatePdx, dash.EnginePlaydate, "")
+	assert.EqualValues(t, "ext", detail(empty, "confidence"))
+	assert.Nil(t, m["notpdx"], "a pdxinfo alone is not a bundle")
+
+	// desktop: the bundles are data folders, the launcher next to them wins
+	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
+	assert.EqualValues(t, []string{"launcher.x86_64"}, candidatePaths(linux))
+
+	// with a simulator, every bundle comes along; which of them the
+	// simulator can actually run is the consumer's call from "simulator"
+	rt := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64", Runtimes: []dash.Flavor{dash.FlavorPlaydatePdx}})
+	assert.ElementsMatch(t, []string{"launcher.x86_64", "Lua.pdx", "Native.pdx", "Pulp.pdx", "renamed", "Empty.pdx"}, candidatePaths(rt))
+
+	// a host that cannot run the launcher still gets the bundles
+	arm := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorPlaydatePdx}})
+	assert.ElementsMatch(t, []string{"Lua.pdx", "Native.pdx", "Pulp.pdx", "renamed", "Empty.pdx"}, candidatePaths(arm))
+}

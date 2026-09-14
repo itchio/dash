@@ -1,0 +1,9 @@
+name=Lua Game
+author=Someone
+description=A Lua game
+bundleID=com.example.lua
+version=0.3
+buildNumber=3
+imagePath=images
+pdxversion=30101
+buildtime=842400494

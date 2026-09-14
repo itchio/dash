@@ -118,6 +118,8 @@ const (
 	FlavorOpenBORPak Flavor = "openbor-pak"
 	// Console ROM or disc image, system in Engine.Details["system"]
 	FlavorROM Flavor = "rom"
+	// Playdate game bundle: the folder holding pdxinfo
+	FlavorPlaydatePdx Flavor = "playdate-pdx"
 )
 
 // The architecture of an executable

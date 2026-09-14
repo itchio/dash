@@ -165,6 +165,7 @@ var detectors = []engineDetector{
 	solarusDetector{},
 	tic80Detector{},
 	openborDetector{},
+	playdateDetector{},
 	unityDetector{},
 	unrealDetector{},
 	dotnetDetector{},

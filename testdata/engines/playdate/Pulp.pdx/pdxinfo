@@ -1,0 +1,7 @@
+name=Pulp Game
+author=Someone
+description=A tiny game made with Pulp
+bundleID=pulp.someone.pulpgame
+imagePath=card
+pdxversion=11000
+buildtime=721442975
