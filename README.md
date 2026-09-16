@@ -10,32 +10,38 @@ and determines interesting launch targets such as:
   * Native Windows, Linux & macOS executables
   * HTML index files
   * .jar files, .love files, etc.
-  * Engine payloads: Godot packs, GameMaker data files, PICO-8 and Picotron carts,
+  * Engine payloads: Godot packs, GameMaker data files, PICO-8 carts,
     Ren'Py and RPG Maker folders, AGS games, WADs, SWFs, DOS folders,
     Playdate bundles, console ROMs and more (see the `Flavor` constants)
 
-Each candidate may carry an `Engine` (what made it, and which version), set
-on native executables when a known engine left its footprint next to them,
-and on every payload flavor.
+dash is used by the itch app to determine what launch targets to show to the
+end-user when launching something they've downloaded. It is also used to
+statically analyze a game's files for platform classification.
 
-`Verdict.Filter` picks what a host can run. Hosts that ship runtimes for
-payload flavors list them in `FilterParams.Runtimes` (`"godot-pck"`,
-`"playdate-pdx"`, `"rom:snes"`, ...) so those candidates survive next to natives.
+## Usage
 
-Natives that are runtime plumbing rather than a launcher carry `helper`
-naming what they belong to: Ren'Py's python and zsync (`renpy`), the
-crashpad and sandbox processes of Electron and NW.js (`electron`, `nwjs`),
-.NET's createdump (`dotnet`), the `bin/` of a bundled JRE (`java`),
-anything under `node_modules` (`node`), and the Unity and Unreal crash
-handlers (`unity`, `unreal`). They stay in the verdict so a consumer can
-see what the upload ships; `Filter` never offers them.
+```go
+verdict, err := dash.Configure("path/to/game", dash.ConfigureParams{
+	Consumer: consumer,
+})
 
-`ConfigureParams.DeepProbe` additionally records native dependencies
-(imported libraries, glibc version) for server-side use, and for Linux
-how the executable reaches a display: the SDL it imports or bundles,
-whether a bundled SDL can be swapped for the host's through its dynamic
-API, and the windowing libraries it names. That is what says whether a
-build can run on a device without X11 or Wayland.
+// narrow down to what can run on this machine
+filtered := verdict.Filter(consumer, dash.FilterParams{
+	OS:   "linux",
+	Arch: "amd64",
+	// payload formats you have a runtime for
+	Runtimes: []dash.Flavor{"godot-pck", "rom:snes"},
+})
+```
+
+Candidates also get tagged with the engine that made them when it can be
+detected, and helper executables (crash handlers, bundled runtimes) are marked
+so `Filter` skips them.
+
+Set `DeepProbe` to also record library dependencies of native executables.
+
+`ScanLaunchTargets` does a full scan with file hashes, for storing a report
+about an upload. It's slow, so don't use it at launch time.
 
 ## License
 

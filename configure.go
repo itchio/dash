@@ -181,34 +181,51 @@ var detectors = []engineDetector{
 // Configure walks a directory and finds potential launch candidates,
 // grouped together into a verdict.
 func Configure(root string, params ConfigureParams) (*Verdict, error) {
-	consumer := params.Consumer
-
-	if params.Stats != nil {
-		params.Stats.SniffsByExt = make(map[string]int)
+	container, pool, err := openConfigurePool(root, params)
+	if err != nil {
+		return nil, err
 	}
+	defer pool.Close()
+	verdict, err := ConfigureContainer(container, pool, params)
+	if err != nil {
+		return nil, err
+	}
+	verdict.BasePath = root
+	return verdict, nil
+}
 
+func openConfigurePool(root string, params ConfigureParams) (*tlc.Container, lake.Pool, error) {
 	filter := params.Filter
 	if filter == nil {
 		filter = tlc.PresetFilter
 	}
-
-	verdict := &Verdict{
-		BasePath: root,
-	}
-
-	var pool lake.Pool
-
 	container, err := tlc.WalkAny(root, tlc.WalkOpts{Filter: filter})
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-
-	pool, err = pools.New(container, root)
+	pool, err := pools.New(container, root)
 	if err != nil {
-		return nil, errors.Wrap(err, "creating pool to configure folder")
+		return nil, nil, errors.Wrap(err, "creating pool to configure folder")
 	}
+	return container, pool, nil
+}
 
-	defer pool.Close()
+// ConfigureContainer is Configure for callers that already have a container
+// and pool, such as uploaders analyzing archive entries. params.Filter is
+// ignored. The verdict has no BasePath, so FixPermissions can't use it and
+// Filter can't probe executables for elevation.
+func ConfigureContainer(container *tlc.Container, pool lake.Pool, params ConfigureParams) (*Verdict, error) {
+	if container == nil || pool == nil {
+		return nil, errors.New("container and pool are required")
+	}
+	if params.Consumer == nil {
+		params.Consumer = &state.Consumer{}
+	}
+	consumer := params.Consumer
+	if params.Stats != nil {
+		params.Stats.SniffsByExt = make(map[string]int)
+	}
+	verdict := &Verdict{}
 
 	s := newScan(params, pool, container)
 	s.candidates = make([]*Candidate, 0)
@@ -854,6 +871,11 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 			if c.WindowsInfo != nil && c.WindowsInfo.InstallerType != "" {
 				consumer.Debugf("Excluding (%s) - installer of type (%s)", c.Path, c.WindowsInfo.InstallerType)
 				return false // false means "is an installer"
+			}
+
+			// Container verdicts would resolve against the working directory.
+			if v.BasePath == "" {
+				return true
 			}
 
 			fullTargetPath := filepath.FromSlash(c.Path)
