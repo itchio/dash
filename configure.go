@@ -174,6 +174,8 @@ var detectors = []engineDetector{
 	constructDetector{},
 	shellDetector{},
 	pythonDetector{},
+	// last: it reads the engines the others set
+	helperDetector{},
 }
 
 // Configure walks a directory and finds potential launch candidates,
@@ -599,6 +601,16 @@ func romSystem(c *Candidate) string {
 //
 // Returns a copy of this Verdict.
 func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
+	// helpers go before any host rule: they must not win a depth or
+	// architecture cut, or be the lone candidate an early return keeps
+	v.Candidates = selectByFunc(v.Candidates, func(c *Candidate) bool {
+		if c.Helper != "" {
+			consumer.Debugf("Excluding (%s) - %s helper", c.Path, c.Helper)
+			return false
+		}
+		return true
+	})
+
 	if len(params.Runtimes) == 0 {
 		return v.filterHost(consumer, params)
 	}

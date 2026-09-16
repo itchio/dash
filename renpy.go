@@ -52,12 +52,6 @@ func (renpyDetector) detect(s *scan) error {
 		for _, c := range s.nativesUnder(joinPath(root, "lib")) {
 			c.setEngine(cloneEngine(info))
 		}
-		// zsync is the updater shipped alongside, not a launcher
-		for _, c := range s.candidates {
-			if c.Engine != nil && c.Engine.Engine == EngineRenpy && strings.HasPrefix(lowerBase(c.Path), "zsync") {
-				c.Engine = nil
-			}
-		}
 	}
 	return nil
 }

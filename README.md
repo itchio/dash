@@ -22,6 +22,14 @@ and on every payload flavor.
 payload flavors list them in `FilterParams.Runtimes` (`"godot-pck"`,
 `"playdate-pdx"`, `"rom:snes"`, ...) so those candidates survive next to natives.
 
+Natives that are runtime plumbing rather than a launcher carry `helper`
+naming what they belong to: Ren'Py's python and zsync (`renpy`), the
+crashpad and sandbox processes of Electron and NW.js (`electron`, `nwjs`),
+.NET's createdump (`dotnet`), the `bin/` of a bundled JRE (`java`),
+anything under `node_modules` (`node`), and the Unity and Unreal crash
+handlers (`unity`, `unreal`). They stay in the verdict so a consumer can
+see what the upload ships; `Filter` never offers them.
+
 `ConfigureParams.DeepProbe` additionally records native dependencies
 (imported libraries, glibc version) for server-side use, and for Linux
 how the executable reaches a display: the SDL it imports or bundles,

@@ -54,6 +54,14 @@ type Candidate struct {
 	// Any other info.
 	// @optional
 	Metadata map[string]any `json:"metadata,omitempty"`
+	// Helper names the runtime a native belongs to when it is plumbing
+	// shipped next to the game rather than something a player launches:
+	// "renpy" for its python and zsync, "electron" or "nwjs" for crashpad
+	// and sandbox processes, "dotnet" for createdump, "java" for a bundled
+	// JRE, "node" for anything under node_modules, "unity" and "unreal"
+	// for their crash handlers. Filter drops helpers.
+	// @optional
+	Helper string `json:"helper,omitempty"`
 }
 
 // Flavor describes whether we're dealing with a native executables, a Java archive, a love2d bundle, etc.

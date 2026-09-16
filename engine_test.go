@@ -59,6 +59,11 @@ func (m candidateMap) expect(t *testing.T, path string, flavor dash.Flavor, engi
 	return c
 }
 
+func (m candidateMap) helper(t *testing.T, path string, helper string) {
+	t.Helper()
+	assert.EqualValues(t, helper, m.get(t, path).Helper, "helper of %s", path)
+}
+
 func detail(c *dash.Candidate, key string) any {
 	if c == nil || c.Engine == nil || c.Engine.Details == nil {
 		return nil
@@ -301,7 +306,15 @@ func Test_Renpy(t *testing.T) {
 	m.expect(t, "MyGame/MyGame.sh", dash.FlavorScript, dash.EngineRenpy, "8.1.3")
 	m.expect(t, "MyGame/lib/py3-linux-x86_64/MyGame", dash.FlavorNativeLinux, dash.EngineRenpy, "8.1.3")
 
-	m.expect(t, "MyGame/lib/py3-linux-x86_64/zsync", dash.FlavorNativeLinux, "", "")
+	for _, path := range []string{
+		"MyGame/lib/py3-linux-x86_64/zsync", "MyGame/lib/py3-linux-x86_64/zsyncmake",
+		"MyGame/lib/py3-linux-x86_64/python", "MyGame/lib/py3-linux-x86_64/pythonw",
+		"MyGame/lib/py3-windows-x86_64/python.exe", "MyGame/lib/py3-windows-x86_64/zsync.exe",
+	} {
+		m.expect(t, path, m.get(t, path).Flavor, dash.EngineRenpy, "8.1.3")
+		m.helper(t, path, "renpy")
+	}
+	m.helper(t, "MyGame/lib/py3-linux-x86_64/MyGame", "")
 
 	m.expect(t, "Old", dash.FlavorRenpy, dash.EngineRenpy, "7")
 	m.expect(t, "Old/lib/linux-x86_64/Old", dash.FlavorNativeLinux, dash.EngineRenpy, "7")
@@ -425,6 +438,8 @@ func Test_Unity(t *testing.T) {
 	win := m.expect(t, "Game.exe", dash.FlavorNativeWindows, dash.EngineUnity, "2022.3.10f1")
 	assert.EqualValues(t, "il2cpp", detail(win, "scripting"))
 	m.expect(t, "UnityCrashHandler64.exe", dash.FlavorNativeWindows, "", "")
+	m.helper(t, "UnityCrashHandler64.exe", "unity")
+	m.helper(t, "Game.exe", "")
 
 	linux := m.expect(t, "linux/Game.x86_64", dash.FlavorNativeLinux, dash.EngineUnity, "2019.4.40f1")
 	assert.EqualValues(t, "mono", detail(linux, "scripting"))
@@ -441,6 +456,9 @@ func Test_Unreal(t *testing.T) {
 	assert.EqualValues(t, 1, detail(root, "paks"))
 	assert.EqualValues(t, 8, detail(root, "pakVersion"))
 	m.expect(t, "Proj/Binaries/Win64/Proj-Win64-Shipping.exe", dash.FlavorNativeWindows, dash.EngineUnreal, "4")
+	m.helper(t, "Proj/Binaries/Win64/Proj-Win64-Shipping.exe", "")
+	m.helper(t, "Engine/Binaries/Win64/CrashReportClient.exe", "unreal")
+	m.helper(t, "Engine/Extras/Redist/en-us/UE4PrereqSetup_x64.exe", "unreal")
 }
 
 func Test_DotNet(t *testing.T) {
@@ -449,6 +467,8 @@ func Test_DotNet(t *testing.T) {
 	assert.EqualValues(t, "framework", detail(fna, "dotnet"))
 	mg := m.expect(t, "monogame-core/Game.exe", dash.FlavorNativeWindows, dash.EngineMonoGame, "")
 	assert.EqualValues(t, "core", detail(mg, "dotnet"))
+	m.helper(t, "monogame-core/Game.exe", "")
+	m.helper(t, "monogame-core/createdump.exe", "dotnet")
 	m.expect(t, "xna/Game.exe", dash.FlavorNativeWindows, dash.EngineXNA, "")
 }
 
@@ -468,7 +488,7 @@ func Test_Annotations(t *testing.T) {
 }
 
 func Test_Shell(t *testing.T) {
-	_, m := configureEngine(t, "shell")
+	v, m := configureEngine(t, "shell")
 	el := m.expect(t, "electron/Game.exe", dash.FlavorNativeWindows, dash.EngineElectron, "12.0.0")
 	assert.EqualValues(t, "electron", detail(el, "shell"))
 
@@ -477,6 +497,16 @@ func Test_Shell(t *testing.T) {
 
 	m.expect(t, "electron-unpacked/game", dash.FlavorNativeLinux, dash.EngineElectron, "")
 	m.expect(t, "electron-unpacked/resources/app/game.html", dash.FlavorHTML, dash.EngineElectron, "")
+
+	m.helper(t, "electron-unpacked/game", "")
+	m.helper(t, "electron-unpacked/chrome_crashpad_handler", "electron")
+	m.helper(t, "electron-unpacked/chrome-sandbox", "electron")
+	m.helper(t, "electron-unpacked/resources/app/node_modules/7zip-bin/linux/x64/7za", "node")
+	m.helper(t, "nwjs/nwjc.exe", "nwjs")
+	m.helper(t, "nwjs/chrome_crashpad_handler.exe", "nwjs")
+
+	linux := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
+	assert.EqualValues(t, []string{"electron-unpacked/game"}, candidatePaths(linux))
 
 	// current NW.js: nw.dll and a zipped package.nw, no html reachable
 	m.expect(t, "nwjs-modern/Game.exe", dash.FlavorNativeWindows, dash.EngineNWJS, "")
@@ -541,6 +571,9 @@ func Test_Jar(t *testing.T) {
 	m.expect(t, "gdx.jar", dash.FlavorJar, dash.EngineLibGDX, "")
 	m.expect(t, "lwjgl.jar", dash.FlavorJar, dash.EngineLWJGL, "")
 	m.expect(t, "plain.jar", dash.FlavorJar, "", "")
+
+	m.helper(t, "jre/bin/java", "java")
+	m.helper(t, "jre/bin/keytool", "java")
 }
 
 func Test_ProbeBudget(t *testing.T) {

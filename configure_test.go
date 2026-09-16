@@ -315,10 +315,17 @@ func Test_ConfigureBlacklist(t *testing.T) {
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
 
+	for _, c := range v.Candidates {
+		if c.Path == "nw" {
+			assert.Empty(t, c.Helper)
+		} else {
+			assert.EqualValues(t, "nwjs", c.Helper, "helper of %s", c.Path)
+		}
+	}
+
 	vcopy := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "amd64"})
 
-	assert.EqualValues(t, 3, len(vcopy.Candidates), "three candidates left after filtering")
-	assert.EqualValues(t, "nw", vcopy.Candidates[0].Path, "non-nacl helper wins")
+	assert.EqualValues(t, []string{"nw"}, candidatePaths(vcopy), "helpers are dropped, the shell remains")
 }
 
 func Test_ConfigureDarwinArch(t *testing.T) {
@@ -562,4 +569,21 @@ func Test_ConfigureLinuxSharedObjects(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{"game", "game-static-pie"}, found)
+}
+
+func Test_FilterDropsHelpersFirst(t *testing.T) {
+	linux := dash.FilterParams{OS: "linux", Arch: "amd64"}
+
+	v, err := dash.Configure(filepath.Join("testdata", "linux-helpers", "lone"), configureParams(t))
+	require.NoError(t, err)
+	require.Len(t, v.Candidates, 1)
+	assert.Empty(t, candidatePaths(v.Filter(makeConsumer(t), linux)), "a lone helper is not a launcher")
+
+	v, err = dash.Configure(filepath.Join("testdata", "linux-helpers", "depth"), configureParams(t))
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"bin/game"}, candidatePaths(v.Filter(makeConsumer(t), linux)), "a deeper launcher beats a root helper")
+
+	v, err = dash.Configure(filepath.Join("testdata", "linux-helpers", "arch"), configureParams(t))
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"game.x86"}, candidatePaths(v.Filter(makeConsumer(t), linux)), "an amd64 helper does not eliminate a 386 launcher")
 }
