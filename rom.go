@@ -15,6 +15,8 @@ package dash
 //     homebrew .nds with the logo
 //   https://digitaldesigndude.itch.io/fishing-the-deep
 //     homebrew .nds without logo or title, entry points only
+//   https://goodboygalaxy.itch.io/goodboy-galaxy-demo
+//     3DS .cia packages (upload 4360172, all eight languages)
 //   https://team-disposable.itch.io/angelsong
 //     .sfc
 //   https://salvatoretosti.itch.io/runic-64
@@ -41,11 +43,12 @@ import (
 // cartridge the system ever shipped. ".md" is only accepted with the SEGA
 // header, since it is also Markdown; ".bin" only with a Sega header.
 //
-// Details: "system" (nes, snes, gb, gbc, gba, nds, md, 32x, sms, gg, pce,
+// Details: "system" (nes, snes, gb, gbc, gba, nds, 3ds, md, 32x, sms, gg, pce,
 // lynx, ngp, a26, c64, amiga, n64, psx, ps2, psp, saturn, segacd,
 // dreamcast, or "" for a disc image whose system could not be read),
 // "confidence" ("ext" when the header was absent or not checked),
-// "format" (for disc images: "cue", "iso", "chd").
+// "format" (for disc images: "cue", "iso", "chd"; for 3DS: "cia", "3dsx",
+// "3ds", "cci").
 type romDetector struct{}
 
 // romCheck inspects a file and returns the system, whether the header
@@ -53,34 +56,38 @@ type romDetector struct{}
 type romCheck func(s *scan, index int, ext string) (system string, confirmed bool, ok bool)
 
 var romExts = map[string]romCheck{
-	".nes": checkNES,
-	".sfc": checkSNES,
-	".smc": checkSNES,
-	".gb":  checkGameBoy,
-	".gbc": checkGameBoy,
-	".gba": checkGBA,
-	".nds": checkNDS,
-	".md":  checkMegaDrive,
-	".gen": checkMegaDrive,
-	".32x": checkMegaDrive,
-	".bin": checkSegaBin,
-	".sms": checkMasterSystem,
-	".gg":  checkMasterSystem,
-	".pce": extOnly("pce"),
-	".lnx": checkLynx,
-	".ngp": checkNeoGeoPocket,
-	".ngc": checkNeoGeoPocket,
-	".a26": extOnly("a26"),
-	".d64": checkD64,
-	".prg": extOnly("c64"),
-	".t64": checkT64,
-	".adf": checkADF,
-	".z64": checkN64,
-	".n64": checkN64,
-	".v64": checkN64,
-	".cue": checkCue,
-	".iso": checkISO,
-	".chd": checkCHD,
+	".nes":  checkNES,
+	".sfc":  checkSNES,
+	".smc":  checkSNES,
+	".gb":   checkGameBoy,
+	".gbc":  checkGameBoy,
+	".gba":  checkGBA,
+	".nds":  checkNDS,
+	".cia":  checkCIA,
+	".3dsx": check3DSX,
+	".3ds":  checkCCI,
+	".cci":  checkCCI,
+	".md":   checkMegaDrive,
+	".gen":  checkMegaDrive,
+	".32x":  checkMegaDrive,
+	".bin":  checkSegaBin,
+	".sms":  checkMasterSystem,
+	".gg":   checkMasterSystem,
+	".pce":  extOnly("pce"),
+	".lnx":  checkLynx,
+	".ngp":  checkNeoGeoPocket,
+	".ngc":  checkNeoGeoPocket,
+	".a26":  extOnly("a26"),
+	".d64":  checkD64,
+	".prg":  extOnly("c64"),
+	".t64":  checkT64,
+	".adf":  checkADF,
+	".z64":  checkN64,
+	".n64":  checkN64,
+	".v64":  checkN64,
+	".cue":  checkCue,
+	".iso":  checkISO,
+	".chd":  checkCHD,
 }
 
 func (romDetector) detect(s *scan) error {
@@ -100,7 +107,7 @@ func (romDetector) detect(s *scan) error {
 			info.detail("confidence", "ext")
 		}
 		switch ext {
-		case ".cue", ".iso", ".chd":
+		case ".cue", ".iso", ".chd", ".cia", ".3dsx", ".3ds", ".cci":
 			info.detail("format", ext[1:])
 		}
 		s.addFileCandidate(index, FlavorROM, info)
@@ -221,6 +228,63 @@ func checkNDS(s *scan, index int, _ string) (string, bool, bool) {
 	inSharedWRAM := func(a uint32) bool { return a >= 0x03780000 && a < 0x03808000 }
 	if inMainRAM(arm9Entry) && (inMainRAM(arm7Entry) || inSharedWRAM(arm7Entry)) {
 		return "nds", true, true
+	}
+	return "", false, false
+}
+
+// CIA has no magic, so check that the header and aligned section sizes fit
+// the file. https://www.3dbrew.org/wiki/CIA
+func checkCIA(s *scan, index int, _ string) (string, bool, bool) {
+	h := s.readHead(index, 0x20)
+	if len(h) != 0x20 || binary.LittleEndian.Uint32(h) != 0x2020 ||
+		binary.LittleEndian.Uint16(h[4:]) != 0 {
+		return "", false, false
+	}
+	sizes := []uint64{
+		uint64(binary.LittleEndian.Uint32(h[8:])),
+		uint64(binary.LittleEndian.Uint32(h[12:])),
+		uint64(binary.LittleEndian.Uint32(h[16:])),
+		binary.LittleEndian.Uint64(h[24:]),
+		uint64(binary.LittleEndian.Uint32(h[20:])),
+	}
+	size := uint64(s.container.Files[index].Size)
+	var end uint64 = 0x2020
+	for i, sectionSize := range sizes {
+		if sectionSize == 0 {
+			if i == 4 {
+				break // metadata is optional
+			}
+			return "", false, false
+		}
+		start := (end + 63) &^ uint64(63)
+		if start > size || sectionSize > size-start {
+			return "", false, false
+		}
+		end = start + sectionSize
+	}
+	return "3ds", true, true
+}
+
+func check3DSX(s *scan, index int, _ string) (string, bool, bool) {
+	h := s.readHead(index, 0x20)
+	if len(h) != 0x20 || string(h[:4]) != "3DSX" {
+		return "", false, false
+	}
+	headerSize := int64(binary.LittleEndian.Uint16(h[4:]))
+	if headerSize < 0x20 || headerSize > s.container.Files[index].Size {
+		return "", false, false
+	}
+	return "3ds", true, true
+}
+
+// .3ds is also a 3D Studio model extension, so require the NCSD header.
+func checkCCI(s *scan, index int, _ string) (string, bool, bool) {
+	r, err := s.open(index)
+	if err != nil || s.container.Files[index].Size < 0x200 {
+		return "", false, false
+	}
+	if string(r.readAt(0x100, 4)) == "NCSD" {
+		return "3ds", true, true
 	}
 	return "", false, false
 }
