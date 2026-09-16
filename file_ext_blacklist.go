@@ -130,8 +130,10 @@ var fileExtBlacklist map[string]struct{} = map[string]struct{}{
 	".unityweb": struct{}{},
 
 	// debug symbols
-	".pdb": struct{}{},
-	".mdb": struct{}{},
+	".pdb":   struct{}{},
+	".mdb":   struct{}{},
+	".debug": struct{}{}, // split ELF debug info (Unity *_s.debug)
+	".dbg":   struct{}{},
 
 	// UE4 stuff
 	".pak":      struct{}{},

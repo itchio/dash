@@ -548,3 +548,18 @@ func Test_FilterLinuxArchFallback(t *testing.T) {
 	assert.ElementsMatch(t, []string{"game.armv7"}, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm"})))
 	assert.Empty(t, paths(v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "riscv64"})))
 }
+
+func Test_ConfigureLinuxSharedObjects(t *testing.T) {
+	// plugins are ET_DYN like position independent executables, but have no
+	// program interpreter; split debug info is dropped by extension
+	v, err := dash.Configure(filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t)})
+	require.NoError(t, err)
+
+	var found []string
+	for _, c := range v.Candidates {
+		if c.Flavor == dash.FlavorNativeLinux {
+			found = append(found, c.Path)
+		}
+	}
+	assert.ElementsMatch(t, []string{"game", "game-static-pie"}, found)
+}

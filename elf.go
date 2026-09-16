@@ -34,9 +34,10 @@ func sniffELF(r *probeReader, name string, size int64) (*Candidate, error) {
 		return nil, nil
 	}
 
-	// some objects are marked as 'executable', others are marked
-	// as 'shared objects', but it doesn't matter since executables
-	// can be marked as shared objects as well (node-webkit) for example.
+	hdr := r.readHead(elf64HeaderLen)
+	if elfIsSharedObject(r, hdr) {
+		return nil, nil
+	}
 
 	result := &Candidate{
 		Flavor:    FlavorNativeLinux,
@@ -44,7 +45,6 @@ func sniffELF(r *probeReader, name string, size int64) (*Candidate, error) {
 		LinuxInfo: &LinuxInfo{},
 	}
 
-	hdr := r.readHead(elfHeaderLen)
 	result.Arch = elfHeaderArch(hdr)
 	result.LinuxInfo.Arch = result.Arch
 	result.LinuxInfo.OS = elfHeaderOS(hdr)
@@ -54,8 +54,111 @@ func sniffELF(r *probeReader, name string, size int64) (*Candidate, error) {
 }
 
 // elfHeaderLen covers e_flags in a 32-bit header (offset 0x24), which is
-// all the header reads need.
+// all the arch, OS and ABI reads need.
 const elfHeaderLen = 40
+
+const (
+	elf32HeaderLen = 52
+	elf64HeaderLen = 64
+	// caps so a bogus header can't drive a huge read
+	maxProgramHeaders = 64
+	maxDynamicScan    = 64 << 10
+)
+
+// elfIsSharedObject reports whether an ET_DYN file is loaded by another
+// program rather than run. Position independent executables are ET_DYN too
+// (node-webkit, most distro builds), but they carry a program interpreter.
+// A static-pie has neither an interpreter nor dynamic dependencies, so only
+// an ET_DYN with no PT_INTERP that names DT_NEEDED libraries is a library.
+// Truncated or unreadable headers keep the file as a candidate.
+func elfIsSharedObject(r *probeReader, hdr []byte) bool {
+	if len(hdr) < 20 {
+		return false
+	}
+	var order binary.ByteOrder = binary.LittleEndian
+	if hdr[elf.EI_DATA] == byte(elf.ELFDATA2MSB) {
+		order = binary.BigEndian
+	}
+	if elf.Type(order.Uint16(hdr[16:18])) != elf.ET_DYN {
+		return false
+	}
+
+	is64 := hdr[elf.EI_CLASS] == byte(elf.ELFCLASS64)
+	var phoff int64
+	var phentsize, phnum int
+	if is64 {
+		if len(hdr) < elf64HeaderLen {
+			return false
+		}
+		phoff = int64(order.Uint64(hdr[0x20:0x28]))
+		phentsize = int(order.Uint16(hdr[0x36:0x38]))
+		phnum = int(order.Uint16(hdr[0x38:0x3a]))
+	} else {
+		if len(hdr) < elf32HeaderLen {
+			return false
+		}
+		phoff = int64(order.Uint32(hdr[0x1c:0x20]))
+		phentsize = int(order.Uint16(hdr[0x2a:0x2c]))
+		phnum = int(order.Uint16(hdr[0x2c:0x2e]))
+	}
+	if phnum == 0 || phnum > maxProgramHeaders || phentsize < 8 {
+		return false
+	}
+	table := r.readAt(phoff, phentsize*phnum)
+	if table == nil {
+		return false
+	}
+
+	var dynOff, dynSize int64
+	for i := 0; i < phnum; i++ {
+		ph := table[i*phentsize : (i+1)*phentsize]
+		switch elf.ProgType(order.Uint32(ph[0:4])) {
+		case elf.PT_INTERP:
+			return false
+		case elf.PT_DYNAMIC:
+			if is64 {
+				if len(ph) < 40 {
+					return false
+				}
+				dynOff = int64(order.Uint64(ph[8:16]))
+				dynSize = int64(order.Uint64(ph[32:40]))
+			} else {
+				if len(ph) < 20 {
+					return false
+				}
+				dynOff = int64(order.Uint32(ph[4:8]))
+				dynSize = int64(order.Uint32(ph[16:20]))
+			}
+		}
+	}
+	if dynSize <= 0 || dynSize > maxDynamicScan {
+		return false
+	}
+	dyn := r.readAt(dynOff, int(dynSize))
+	if dyn == nil {
+		return false
+	}
+
+	entrySize := 8
+	if is64 {
+		entrySize = 16
+	}
+	for off := 0; off+entrySize <= len(dyn); off += entrySize {
+		var tag int64
+		if is64 {
+			tag = int64(order.Uint64(dyn[off : off+8]))
+		} else {
+			tag = int64(order.Uint32(dyn[off : off+4]))
+		}
+		switch elf.DynTag(tag) {
+		case elf.DT_NULL:
+			return false
+		case elf.DT_NEEDED:
+			return true
+		}
+	}
+	return false
+}
 
 // ARM EABI float convention bits in e_flags
 const (
