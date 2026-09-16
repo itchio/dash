@@ -241,10 +241,9 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 	}
 	defer ef.Close()
 
-	info.Static = ef.SectionByType(elf.SHT_DYNAMIC) == nil
-
 	libs, err := ef.ImportedLibraries()
-	if err == nil {
+	importsKnown := err == nil
+	if importsKnown {
 		info.Imports = libs
 	}
 	// Haiku declares System V like Linux does; its C library gives it away
@@ -263,6 +262,9 @@ func probeELF(ra io.ReaderAt, info *LinuxInfo) error {
 		}
 		break
 	}
+	// a static-pie keeps a dynamic section for its own relocations, so the
+	// interpreter and DT_NEEDED are what tell it apart from a dynamic build
+	info.Static = importsKnown && info.Interpreter == "" && len(info.Imports) == 0
 	probeWindowing(ef, info)
 
 	syms, err := ef.ImportedSymbols()

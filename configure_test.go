@@ -569,6 +569,17 @@ func Test_ConfigureLinuxSharedObjects(t *testing.T) {
 		}
 	}
 	assert.ElementsMatch(t, []string{"game", "game-static-pie"}, found)
+
+	v, err = dash.Configure(filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	require.NoError(t, err)
+	for _, c := range v.Candidates {
+		switch c.Path {
+		case "game-static-pie":
+			assert.True(t, c.LinuxInfo.Static, "a static-pie has no interpreter and no DT_NEEDED")
+		case "game":
+			assert.False(t, c.LinuxInfo.Static)
+		}
+	}
 }
 
 func Test_FilterDropsHelpersFirst(t *testing.T) {

@@ -239,8 +239,8 @@ type LinuxInfo struct {
 	// executable was linked against. Only filled when DeepProbe is set.
 	// @optional
 	Interpreter string `json:"interpreter,omitempty"`
-	// True when the executable has no dynamic section (no interpreter, no
-	// DT_NEEDED). Only meaningful when ConfigureParams.DeepProbe is set.
+	// True when the executable has no program interpreter and no DT_NEEDED
+	// libraries. Only meaningful when ConfigureParams.DeepProbe is set.
 	// @optional
 	Static bool `json:"static,omitempty"`
 	// Highest GLIBC_x.y symbol version the executable references.
