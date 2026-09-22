@@ -240,6 +240,10 @@ func Test_ROM(t *testing.T) {
 		"s.cue":  {"psx", true},
 		"t.chd":  {"", false},
 		"u.bin":  {"md", true},
+		// Analogue Pocket ROMs are recognized by their logo, not the extension
+		"v.pocket": {"pocket", true},
+		"w.pocket": {"gb", true},
+		"x.gb":     {"pocket", true},
 	}
 	for path, e := range expected {
 		c := m.expect(t, path, dash.FlavorROM, dash.EngineROM, "")
@@ -250,7 +254,10 @@ func Test_ROM(t *testing.T) {
 			assert.EqualValues(t, "ext", detail(c, "confidence"), "confidence of %s", path)
 		}
 	}
+	assert.EqualValues(t, true, detail(m["v.pocket"], "color"))
+	assert.Nil(t, detail(m["x.gb"], "color"))
 	assert.Nil(t, m["fake.nes"], "a .nes without the header is not a ROM")
+	assert.Nil(t, m["fake.pocket"], "a .pocket without either logo is not a ROM")
 	assert.Nil(t, m["s.bin"], "the cue's bin is not its own candidate")
 	assert.Nil(t, m["readme.md"], "markdown is not a Mega Drive ROM")
 	assert.Nil(t, m["junk.bin"], "a .bin without a Sega header is nothing")
@@ -262,14 +269,17 @@ func Test_ROMFilter(t *testing.T) {
 	v, _ := configureEngine(t, "rom")
 
 	desktop := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
-	assert.Len(t, desktop.Candidates, 22, "with nothing else, every ROM stays")
+	assert.Len(t, desktop.Candidates, 25, "with nothing else, every ROM stays")
 
 	snes := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{"rom:snes"}})
 	assert.ElementsMatch(t, []string{"b.sfc", "b2.smc"}, candidatePaths(snes))
 
 	// listing "rom" without a system means every system
 	all := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorROM}})
-	assert.Len(t, all.Candidates, 22)
+	assert.Len(t, all.Candidates, 25)
+
+	pocket := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{"rom:pocket"}})
+	assert.ElementsMatch(t, []string{"v.pocket", "x.gb"}, candidatePaths(pocket))
 }
 
 func Test_DOS(t *testing.T) {

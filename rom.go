@@ -7,6 +7,14 @@ package dash
 //     .gb
 //   https://coffeevalenbat.itch.io/pizza-delivery-re-heated
 //     .gbc
+//   https://walfie.itch.io/walfies-nonograms
+//     Analogue Pocket .pocket pushed with butler
+//   https://thalamusdigital.itch.io/cave-dave-game-boy-color
+//     Analogue Pocket .pocket, color
+//   https://bbbbbr.itch.io/gb-wordyl
+//     zip of .pocket files, one per language
+//   https://joyrider3774.itch.io/waternet
+//     .pocket next to the README and box art
 //   https://pyro-pyro.itch.io/sekhmets-playground
 //     homebrew .gba
 //   https://panelix.itch.io/panelix
@@ -43,12 +51,13 @@ import (
 // cartridge the system ever shipped. ".md" is only accepted with the SEGA
 // header, since it is also Markdown; ".bin" only with a Sega header.
 //
-// Details: "system" (nes, snes, gb, gbc, gba, nds, 3ds, md, 32x, sms, gg, pce,
-// lynx, ngp, a26, c64, amiga, n64, psx, ps2, psp, saturn, segacd,
-// dreamcast, or "" for a disc image whose system could not be read),
+// Details: "system" (nes, snes, gb, gbc, pocket, gba, nds, 3ds, md, 32x,
+// sms, gg, pce, lynx, ngp, a26, c64, amiga, n64, psx, ps2, psp, saturn,
+// segacd, dreamcast, or "" for a disc image whose system could not be read),
 // "confidence" ("ext" when the header was absent or not checked),
 // "format" (for disc images: "cue", "iso", "chd"; for 3DS: "cia", "3dsx",
-// "3ds", "cci").
+// "3ds", "cci"), "color" (pocket only: the ROM asks for Game Boy Color
+// mode).
 type romDetector struct{}
 
 // romCheck inspects a file and returns the system, whether the header
@@ -56,38 +65,39 @@ type romDetector struct{}
 type romCheck func(s *scan, index int, ext string) (system string, confirmed bool, ok bool)
 
 var romExts = map[string]romCheck{
-	".nes":  checkNES,
-	".sfc":  checkSNES,
-	".smc":  checkSNES,
-	".gb":   checkGameBoy,
-	".gbc":  checkGameBoy,
-	".gba":  checkGBA,
-	".nds":  checkNDS,
-	".cia":  checkCIA,
-	".3dsx": check3DSX,
-	".3ds":  checkCCI,
-	".cci":  checkCCI,
-	".md":   checkMegaDrive,
-	".gen":  checkMegaDrive,
-	".32x":  checkMegaDrive,
-	".bin":  checkSegaBin,
-	".sms":  checkMasterSystem,
-	".gg":   checkMasterSystem,
-	".pce":  extOnly("pce"),
-	".lnx":  checkLynx,
-	".ngp":  checkNeoGeoPocket,
-	".ngc":  checkNeoGeoPocket,
-	".a26":  extOnly("a26"),
-	".d64":  checkD64,
-	".prg":  extOnly("c64"),
-	".t64":  checkT64,
-	".adf":  checkADF,
-	".z64":  checkN64,
-	".n64":  checkN64,
-	".v64":  checkN64,
-	".cue":  checkCue,
-	".iso":  checkISO,
-	".chd":  checkCHD,
+	".nes":    checkNES,
+	".sfc":    checkSNES,
+	".smc":    checkSNES,
+	".gb":     checkGameBoy,
+	".gbc":    checkGameBoy,
+	".pocket": checkGameBoy,
+	".gba":    checkGBA,
+	".nds":    checkNDS,
+	".cia":    checkCIA,
+	".3dsx":   check3DSX,
+	".3ds":    checkCCI,
+	".cci":    checkCCI,
+	".md":     checkMegaDrive,
+	".gen":    checkMegaDrive,
+	".32x":    checkMegaDrive,
+	".bin":    checkSegaBin,
+	".sms":    checkMasterSystem,
+	".gg":     checkMasterSystem,
+	".pce":    extOnly("pce"),
+	".lnx":    checkLynx,
+	".ngp":    checkNeoGeoPocket,
+	".ngc":    checkNeoGeoPocket,
+	".a26":    extOnly("a26"),
+	".d64":    checkD64,
+	".prg":    extOnly("c64"),
+	".t64":    checkT64,
+	".adf":    checkADF,
+	".z64":    checkN64,
+	".n64":    checkN64,
+	".v64":    checkN64,
+	".cue":    checkCue,
+	".iso":    checkISO,
+	".chd":    checkCHD,
 }
 
 func (romDetector) detect(s *scan) error {
@@ -105,6 +115,9 @@ func (romDetector) detect(s *scan) error {
 		info.detail("system", system)
 		if !confirmed {
 			info.detail("confidence", "ext")
+		}
+		if system == "pocket" && gameBoyColor(s, index) {
+			info.detail("color", true)
 		}
 		switch ext {
 		case ".cue", ".iso", ".chd", ".cia", ".3dsx", ".3ds", ".cci":
@@ -177,21 +190,38 @@ func checkSNES(s *scan, index int, _ string) (string, bool, bool) {
 
 var nintendoLogoHead = []byte{0xce, 0xed, 0x66, 0x66, 0xcc, 0x0d, 0x00, 0x0b}
 
+// analogueLogoHead replaces the Nintendo logo in Game Boy ROMs built for
+// the Analogue Pocket (GB Studio and GBDK's "ap" port). The hardware
+// registers are remapped too, so these only run on a Pocket core.
+var analogueLogoHead = []byte{0x01, 0x10, 0xce, 0xef, 0x00, 0x00, 0x44, 0xaa}
+
+// checkGameBoy goes by the logo rather than the extension, so a .pocket
+// carrying the Nintendo logo is a plain Game Boy ROM and a .gb carrying the
+// Analogue logo is a Pocket ROM.
 func checkGameBoy(s *scan, index int, ext string) (string, bool, bool) {
 	r, err := s.open(index)
 	if err != nil {
 		return "", false, false
 	}
-	if !bytes.Equal(r.readAt(0x104, 8), nintendoLogoHead) {
+	switch logo := r.readAt(0x104, 8); {
+	case bytes.Equal(logo, analogueLogoHead):
+		return "pocket", true, true
+	case !bytes.Equal(logo, nintendoLogoHead):
 		return "", false, false
+	case ext == ".gbc" || gameBoyColor(s, index):
+		return "gbc", true, true
 	}
-	system := "gb"
-	if flag := r.readAt(0x143, 1); flag != nil && flag[0]&0x80 != 0 {
-		system = "gbc"
-	} else if ext == ".gbc" {
-		system = "gbc"
+	return "gb", true, true
+}
+
+// gameBoyColor reads the CGB flag of a Game Boy header.
+func gameBoyColor(s *scan, index int) bool {
+	r, err := s.open(index)
+	if err != nil {
+		return false
 	}
-	return system, true, true
+	flag := r.readAt(0x143, 1)
+	return flag != nil && flag[0]&0x80 != 0
 }
 
 var gbaLogoHead = []byte{0x24, 0xff, 0xae, 0x51, 0x69, 0x9a, 0xa2, 0x21}
