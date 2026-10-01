@@ -18,6 +18,12 @@ import (
 
 var loveVersionPattern = regexp.MustCompile(`t\.version\s*=\s*"([^"]+)"`)
 
+// A string constant in LuaJIT bytecode is its length plus 5 as a byte,
+// then the text. The value of t.version sits just before "version".
+var loveBytecodeVersionPattern = regexp.MustCompile(`([\x08-\x14])(\d+\.\d+(?:\.\d+)?)\x0cversion`)
+
+const luajitSignature = "\x1bLJ"
+
 func loveEngine(version string) *EngineInfo {
 	return &EngineInfo{Engine: EngineLove, Version: version}
 }
@@ -37,11 +43,30 @@ func sniffLoveConf(r io.Reader, dir string) (*Candidate, error) {
 }
 
 func loveConfVersion(r io.Reader) string {
-	s := bufio.NewScanner(r)
+	br := bufio.NewReader(r)
+	if sig, _ := br.Peek(len(luajitSignature)); string(sig) == luajitSignature {
+		return loveBytecodeVersion(br)
+	}
+	s := bufio.NewScanner(br)
 	for s.Scan() {
 		matches := loveVersionPattern.FindSubmatch(s.Bytes())
 		if len(matches) == 2 {
 			return string(matches[1])
+		}
+	}
+	return ""
+}
+
+// loveBytecodeVersion reads the version from a conf.lua compiled with
+// luajit -b.
+func loveBytecodeVersion(r io.Reader) string {
+	b, err := io.ReadAll(io.LimitReader(r, 64<<10))
+	if err != nil {
+		return ""
+	}
+	for _, m := range loveBytecodeVersionPattern.FindAllSubmatch(b, -1) {
+		if int(m[1][0]) == len(m[2])+5 {
+			return string(m[2])
 		}
 	}
 	return ""

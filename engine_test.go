@@ -542,13 +542,14 @@ func Test_Love(t *testing.T) {
 	m.expect(t, "notfused/Other.exe", dash.FlavorNativeWindows, "", "")
 	assert.Nil(t, m["notfused/Other.exe#love"])
 
+	m.expect(t, "compiled.love", dash.FlavorLove, dash.EngineLove, "11.4")
 	m.expect(t, "unpacked", dash.FlavorLove, dash.EngineLove, "0.10.2")
 	m.expect(t, "Love.app", dash.FlavorAppMacos, dash.EngineLove, "")
 	m.expect(t, "Love.app/Contents/Resources/game.love", dash.FlavorLove, dash.EngineLove, "11.5")
 
 	// the top-level love candidates outrank the deeper exes by depth, as before
 	win := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
-	assert.ElementsMatch(t, []string{"game.love", "unpacked"}, candidatePaths(win))
+	assert.ElementsMatch(t, []string{"game.love", "compiled.love", "unpacked"}, candidatePaths(win))
 }
 
 func Test_LoveFusedFilter(t *testing.T) {
