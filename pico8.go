@@ -76,8 +76,8 @@ func (pico8Detector) detect(s *scan) error {
 		if m := pico8ShellPattern.FindSubmatch(s.readHead(htmlIndex, 2048)); m != nil {
 			version = string(m[1])
 		}
-		for index, lower := range s.lowerFiles {
-			if parentDir(lower) != dir || !strings.HasSuffix(lower, ".js") {
+		for _, index := range s.filesInDir[dir] {
+			if !strings.HasSuffix(s.lowerFiles[index], ".js") {
 				continue
 			}
 			if !bytes.Contains(s.readHead(index, 256), []byte("var _cartdat=[")) {

@@ -31,8 +31,15 @@ type scan struct {
 	fileIndex map[string]int
 	// lowercased dir paths ("" is the root), including every ancestor of a file
 	dirs map[string]bool
+	// lowercased dir -> original casing, from the first file under it or
+	// else its dir entry
+	originalDirs map[string]string
+	// lowercased dir -> indices of the files directly inside it
+	filesInDir map[string][]int
 
 	candidates []*Candidate
+	// lookups over candidates, extended as candidates are appended
+	cidx candidateIndex
 
 	// last tailWindow bytes of files the detectors looked at, so the five
 	// trailer checks on every executable cost one open, not five
@@ -48,29 +55,72 @@ const tailWindow = 65535 + 22
 
 func newScan(params ConfigureParams, pool lake.Pool, container *tlc.Container) *scan {
 	s := &scan{
-		params:     params,
-		consumer:   params.Consumer,
-		pool:       pool,
-		container:  container,
-		lowerFiles: make([]string, len(container.Files)),
-		fileIndex:  make(map[string]int, len(container.Files)),
-		dirs:       map[string]bool{"": true},
+		params:       params,
+		consumer:     params.Consumer,
+		pool:         pool,
+		container:    container,
+		lowerFiles:   make([]string, len(container.Files)),
+		fileIndex:    make(map[string]int, len(container.Files)),
+		dirs:         map[string]bool{"": true},
+		originalDirs: make(map[string]string),
+		filesInDir:   make(map[string][]int),
 	}
 	for i, f := range container.Files {
 		lp := strings.ToLower(f.Path)
 		s.lowerFiles[i] = lp
 		s.fileIndex[lp] = i
-		for d := parentDir(lp); d != ""; d = parentDir(d) {
+		dir := parentDir(lp)
+		s.filesInDir[dir] = append(s.filesInDir[dir], i)
+		for d := dir; d != ""; d = parentDir(d) {
 			if s.dirs[d] {
 				break
 			}
 			s.dirs[d] = true
+			s.originalDirs[d] = f.Path[:len(d)]
 		}
 	}
 	for _, d := range container.Dirs {
-		s.dirs[strings.ToLower(d.Path)] = true
+		lp := strings.ToLower(d.Path)
+		s.dirs[lp] = true
+		if _, ok := s.originalDirs[lp]; !ok {
+			s.originalDirs[lp] = d.Path
+		}
 	}
 	return s
+}
+
+// candidateIndex answers path and directory lookups over s.candidates,
+// which detectors only ever append to.
+type candidateIndex struct {
+	indexed      int
+	byPath       map[string][]*Candidate
+	nativesIn    map[string][]*Candidate
+	nativesUnder map[string][]*Candidate
+}
+
+func (s *scan) index() *candidateIndex {
+	idx := &s.cidx
+	if idx.byPath == nil || idx.indexed > len(s.candidates) {
+		idx.indexed = 0
+		idx.byPath = make(map[string][]*Candidate)
+		idx.nativesIn = make(map[string][]*Candidate)
+		idx.nativesUnder = make(map[string][]*Candidate)
+	}
+	for ; idx.indexed < len(s.candidates); idx.indexed++ {
+		c := s.candidates[idx.indexed]
+		lp := strings.ToLower(c.Path)
+		idx.byPath[lp] = append(idx.byPath[lp], c)
+		if !c.IsNative() {
+			continue
+		}
+		dir := parentDir(lp)
+		idx.nativesIn[dir] = append(idx.nativesIn[dir], c)
+		idx.nativesUnder[""] = append(idx.nativesUnder[""], c)
+		for d := dir; d != ""; d = parentDir(d) {
+			idx.nativesUnder[d] = append(idx.nativesUnder[d], c)
+		}
+	}
+	return idx
 }
 
 func (s *scan) logf(format string, args ...any) {
@@ -209,41 +259,25 @@ func (s *scan) filesUnder(lowerDir string) []int {
 
 // candidateAt returns the candidate for a path, if any.
 func (s *scan) candidateAt(lowerPath string) *Candidate {
-	for _, c := range s.candidates {
-		if strings.ToLower(c.Path) == lowerPath {
-			return c
-		}
+	if cs := s.index().byPath[lowerPath]; len(cs) > 0 {
+		return cs[0]
 	}
 	return nil
 }
 
+// candidatesAt returns every candidate for a path, in detection order.
+func (s *scan) candidatesAt(lowerPath string) []*Candidate {
+	return s.index().byPath[lowerPath]
+}
+
 // nativesIn returns native candidates directly inside a lowercased dir.
 func (s *scan) nativesIn(lowerDir string) []*Candidate {
-	var res []*Candidate
-	for _, c := range s.candidates {
-		if !c.IsNative() {
-			continue
-		}
-		if parentDir(strings.ToLower(c.Path)) == lowerDir {
-			res = append(res, c)
-		}
-	}
-	return res
+	return s.index().nativesIn[lowerDir]
 }
 
 // nativesUnder returns native candidates anywhere below a lowercased dir.
 func (s *scan) nativesUnder(lowerDir string) []*Candidate {
-	prefix := lowerDir + "/"
-	if lowerDir == "" {
-		prefix = ""
-	}
-	var res []*Candidate
-	for _, c := range s.candidates {
-		if c.IsNative() && strings.HasPrefix(strings.ToLower(c.Path), prefix) {
-			res = append(res, c)
-		}
-	}
-	return res
+	return s.index().nativesUnder[lowerDir]
 }
 
 // annotateNativesIn sets the engine on every native directly inside a dir.
@@ -308,15 +342,8 @@ func (s *scan) originalDir(lowerDir string) string {
 	if lowerDir == "" {
 		return ""
 	}
-	for i, lp := range s.lowerFiles {
-		if strings.HasPrefix(lp, lowerDir+"/") {
-			return s.container.Files[i].Path[:len(lowerDir)]
-		}
-	}
-	for _, d := range s.container.Dirs {
-		if strings.ToLower(d.Path) == lowerDir {
-			return d.Path
-		}
+	if dir, ok := s.originalDirs[lowerDir]; ok {
+		return dir
 	}
 	return lowerDir
 }

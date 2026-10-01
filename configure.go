@@ -333,17 +333,19 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 		declared := bundleExecutables[appCandidate]
 
 		var match *Candidate
-		for _, c := range s.candidates {
-			if c.Flavor != FlavorNativeMacos {
-				continue
+		if declared != "" {
+			for _, c := range s.candidatesAt(declared) {
+				if c.Flavor == FlavorNativeMacos {
+					match = c
+					break
+				}
 			}
-			cPath := strings.ToLower(c.Path)
-			if cPath == declared {
-				match = c
-				break
-			}
-			if match == nil && declared == "" && strings.HasPrefix(cPath, macosPrefix) {
-				match = c
+		} else {
+			for _, c := range s.nativesUnder(strings.TrimSuffix(macosPrefix, "/")) {
+				if c.Flavor == FlavorNativeMacos {
+					match = c
+					break
+				}
 			}
 		}
 		if match != nil {
