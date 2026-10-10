@@ -31,6 +31,20 @@ void _start(void) { for (;;) {} }
 C
 $CC sdl3-bundled -static "$tmp/sdl3.c"
 
+# SDL3 without the dynamic API keeps the SDL2 hint name too (Godot)
+cat >"$tmp/sdl3-fixed.c" <<'C'
+const char *const strings[] = {"SDL_VIDEODRIVER", "SDL_VIDEO_DRIVER", "/libGL.so.1"};
+void _start(void) { for (;;) {} }
+C
+$CC sdl3-bundled-fixed -static "$tmp/sdl3-fixed.c"
+
+# the needles packed without terminators, as Go lays out string literals
+cat >"$tmp/packed.c" <<'C'
+const char packed[] = "error: %#vSDL_DYNAMIC_APISDL_VIDEODRIVER|dmc_unrarlibX11.solibgbm.solibEGL.sogodot-pck";
+void _start(void) { for (;;) {} }
+C
+$CC go-packed -static "$tmp/packed.c"
+
 # linked against the system's SDL2, and against GLFW with X11
 echo 'int SDL_Init(unsigned f) { return (int)f; }' >"$tmp/lib.c"
 for so in libSDL2-2.0.so.0 libglfw.so.3 libX11.so.6 libGL.so.1; do

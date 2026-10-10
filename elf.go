@@ -323,9 +323,9 @@ func probeWindowing(ef *elf.File, info *LinuxInfo) {
 	if s := ef.Section(".rodata"); s != nil && s.Size <= maxRodataScan {
 		data, _ = s.Data()
 	}
-	has := func(needle string) bool { return bytes.Contains(data, []byte(needle)) }
+	has := func(needle string) bool { return hasCString(data, needle, false) }
 	for _, d := range displayLibraries {
-		if has(d.prefix) {
+		if hasCString(data, d.prefix, true) {
 			found[d.tag] = true
 		}
 	}
@@ -335,10 +335,11 @@ func probeWindowing(ef *elf.File, info *LinuxInfo) {
 			info.SDL, info.SDLBundled, info.SDLDynamicAPI = "2", true, true
 		case has("SDL3_DYNAMIC_API"):
 			info.SDL, info.SDLBundled, info.SDLDynamicAPI = "3", true, true
-		case has("SDL_VIDEODRIVER"):
-			info.SDL, info.SDLBundled = "2", true
+		// SDL3 still reads the SDL2 name, so its own name goes first
 		case has("SDL_VIDEO_DRIVER"):
 			info.SDL, info.SDLBundled = "3", true
+		case has("SDL_VIDEODRIVER"):
+			info.SDL, info.SDLBundled = "2", true
 		}
 	}
 
@@ -346,6 +347,28 @@ func probeWindowing(ef *elf.File, info *LinuxInfo) {
 		info.Display = append(info.Display, tag)
 	}
 	sort.Strings(info.Display)
+}
+
+// hasCString reports whether needle is a whole NUL-terminated string in
+// data. With prefix, needle is a library file name that may continue past
+// the match and may end a path, as in "/libGL.so.1". Go and other languages
+// that pack literals without terminators never match, so a tool that embeds
+// these needles (butler embeds dash) does not detect itself.
+func hasCString(data []byte, needle string, prefix bool) bool {
+	n := []byte(needle)
+	for off := 0; ; {
+		i := bytes.Index(data[off:], n)
+		if i < 0 {
+			return false
+		}
+		i += off
+		end := i + len(n)
+		start := i == 0 || data[i-1] == 0 || (prefix && data[i-1] == '/')
+		if start && (prefix || (end < len(data) && data[end] == 0)) {
+			return true
+		}
+		off = i + 1
+	}
 }
 
 // ProbeELF returns the full Linux record for one executable: what the

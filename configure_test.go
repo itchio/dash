@@ -454,7 +454,7 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 		assert.EqualValues(t, dash.ArchArm64, c.LinuxInfo.Arch)
 		byPath[c.Path] = c.LinuxInfo
 	}
-	require.Len(t, byPath, 6)
+	require.Len(t, byPath, 8)
 
 	bundled := byPath["sdl2-bundled"]
 	assert.EqualValues(t, "2", bundled.SDL)
@@ -478,6 +478,11 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 	assert.EqualValues(t, "3", sdl3.SDL)
 	assert.True(t, sdl3.SDLDynamicAPI)
 
+	sdl3Fixed := byPath["sdl3-bundled-fixed"]
+	assert.EqualValues(t, "3", sdl3Fixed.SDL)
+	assert.False(t, sdl3Fixed.SDLDynamicAPI)
+	assert.EqualValues(t, []string{"gl"}, sdl3Fixed.Display)
+
 	shared := byPath["sdl2-shared"]
 	assert.EqualValues(t, "2", shared.SDL)
 	assert.False(t, shared.SDLBundled)
@@ -488,6 +493,11 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 	glfw := byPath["glfw-x11"]
 	assert.Empty(t, glfw.SDL)
 	assert.EqualValues(t, []string{"gl", "glfw", "x11"}, glfw.Display)
+
+	packed := byPath["go-packed"]
+	assert.Empty(t, packed.SDL)
+	assert.False(t, packed.SDLBundled)
+	assert.Empty(t, packed.Display)
 
 	// without the flag none of it is read
 	v, err = dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t)})
