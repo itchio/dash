@@ -234,6 +234,12 @@ type LinuxInfo struct {
 	// build) or "eabi" (soft-float). Empty for other architectures.
 	// @optional
 	ABI string `json:"abi,omitempty"`
+	// True when the executable is an AppImage: a runtime stub with the
+	// application packed behind it. The rest of this record describes
+	// the stub, not the application. Running it needs FUSE unless the
+	// image is unpacked first.
+	// @optional
+	AppImage bool `json:"appImage,omitempty"`
 	// Program interpreter (PT_INTERP), such as /lib/ld-linux-armhf.so.3
 	// or /lib/ld-musl-aarch64.so.1. Names the C library and ABI the
 	// executable was linked against. Only filled when DeepProbe is set.
@@ -263,6 +269,11 @@ type LinuxInfo struct {
 	// host substitute its own SDL at load time (SDL_DYNAMIC_API).
 	// @optional
 	SDLDynamicAPI bool `json:"sdlDynamicApi,omitempty"`
+	// True when the SDL the executable imports ships with it, as a
+	// library next to it or in a lib directory. Display then includes
+	// that library's backends. Only filled when DeepProbe is set.
+	// @optional
+	SDLShipped bool `json:"sdlShipped,omitempty"`
 	// Windowing and graphics libraries the executable, or the SDL it
 	// bundles, can load: "x11", "wayland", "kmsdrm", "glfw", "egl", "gl",
 	// "gles", "vulkan". From DT_NEEDED and the library names it carries

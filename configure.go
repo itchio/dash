@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -360,6 +361,7 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 		}
 	}
 
+	s.resolveAppRunLinks()
 	if params.DeepProbe {
 		s.deepProbe()
 	}
@@ -379,6 +381,35 @@ func probePE(f *eosFile, consumer *state.Consumer) (info *pelican.PeInfo, err er
 		}
 	}()
 	return pelican.Probe(f, pelican.ProbeParams{Consumer: consumer})
+}
+
+// resolveAppRunLinks turns an unpacked AppImage's AppRun into a candidate
+// when it is a symlink to one (AppRun -> usr/bin/game is a common layout).
+// Symlinks are never sniffed, so without this the image would outrank
+// its own unpacked tree in Filter.
+func (s *scan) resolveAppRunLinks() {
+	idx := s.index()
+	for _, link := range s.container.Symlinks {
+		lp := strings.ToLower(link.Path)
+		dir := parentDir(lp)
+		if !strings.HasSuffix(lp, "/apprun") || !strings.HasSuffix(dir, ".appimage.d") {
+			continue
+		}
+		dest := path.Clean(path.Join(dir, strings.ToLower(link.Dest)))
+		if strings.HasPrefix(link.Dest, "/") || !strings.HasPrefix(dest, dir+"/") {
+			continue
+		}
+		for _, target := range idx.byPath[dest] {
+			if !target.IsNative() {
+				continue
+			}
+			c := *target
+			c.Path = link.Path
+			c.Depth = pathDepth(link.Path)
+			s.candidates = append(s.candidates, &c)
+			break
+		}
+	}
 }
 
 // deepProbe fills the native dependency records. Failures are logged, not
@@ -402,6 +433,7 @@ func (s *scan) deepProbe() {
 			if err := probeELF(&readerAtFromSeeker{r}, c.LinuxInfo); err != nil {
 				s.logf("deep probe: %s: %s", c.Path, err)
 			}
+			s.probeShippedSDL(c)
 		case FlavorNativeWindows:
 			r, size, err := s.openRaw(index)
 			if err != nil {
@@ -558,6 +590,11 @@ type FilterParams struct {
 	// Matching candidates survive alongside natives instead of losing to
 	// them, and are ranked with them by size and score.
 	Runtimes []Flavor
+	// UnpackedAppImages means the host runs an AppImage from a tree unpacked
+	// next to it (X.AppImage.d/AppRun) rather than mounting it. An image
+	// whose tree has an AppRun is dropped so the tree is not lost to a depth
+	// cut.
+	UnpackedAppImages bool
 }
 
 // supportsRuntime reports whether a payload candidate is covered by the
@@ -629,6 +666,20 @@ func (v Verdict) Filter(consumer *state.Consumer, params FilterParams) Verdict {
 		}
 		return true
 	})
+
+	if params.UnpackedAppImages {
+		lowerPaths := make(map[string]bool, len(v.Candidates))
+		for _, c := range v.Candidates {
+			lowerPaths[strings.ToLower(c.Path)] = true
+		}
+		v.Candidates = selectByFunc(v.Candidates, func(c *Candidate) bool {
+			if c.LinuxInfo != nil && c.LinuxInfo.AppImage && lowerPaths[strings.ToLower(c.Path)+".d/apprun"] {
+				consumer.Debugf("Excluding (%s) - unpacked AppRun present", c.Path)
+				return false
+			}
+			return true
+		})
+	}
 
 	if len(params.Runtimes) == 0 {
 		return v.filterHost(consumer, params)

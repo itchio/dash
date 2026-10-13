@@ -53,4 +53,13 @@ done
 echo 'void _start(void) { for (;;) {} }' >"$tmp/main.c"
 $CC sdl2-shared "$tmp/main.c" -Wl,--no-as-needed "$tmp/libSDL2-2.0.so.0"
 $CC glfw-x11 "$tmp/main.c" -Wl,--no-as-needed "$tmp/libglfw.so.3" "$tmp/libX11.so.6" "$tmp/libGL.so.1"
+
+# imports SDL2 and ships it in lib/ next to itself; that SDL links X11 and dlopens the rest
+mkdir -p shipped/lib
+cat >"$tmp/shipped.c" <<'C'
+const char *const strings[] = {"SDL_VIDEODRIVER", "libwayland-client.so.0", "libgbm.so.1"};
+int SDL_Init(unsigned f) { return (int)f; }
+C
+aarch64-linux-gnu-gcc -nostdlib -shared -Wl,-soname,libSDL2-2.0.so.0 -o shipped/lib/libSDL2-2.0.so.0.2800.5 "$tmp/shipped.c" -Wl,--no-as-needed "$tmp/libX11.so.6"
+$CC shipped/game "$tmp/main.c" -Wl,--no-as-needed shipped/lib/libSDL2-2.0.so.0.2800.5
 ls -la

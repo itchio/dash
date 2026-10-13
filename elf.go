@@ -49,8 +49,15 @@ func sniffELF(r *probeReader, name string, size int64) (*Candidate, error) {
 	result.LinuxInfo.Arch = result.Arch
 	result.LinuxInfo.OS = elfHeaderOS(hdr)
 	result.LinuxInfo.ABI = elfHeaderABI(hdr)
+	result.LinuxInfo.AppImage = elfIsAppImage(hdr)
 
 	return result, nil
+}
+
+// AppImages mark the padding bytes of e_ident with "AI" and the format
+// version: 1 for an ISO 9660 payload, 2 for SquashFS.
+func elfIsAppImage(hdr []byte) bool {
+	return len(hdr) > 10 && hdr[8] == 'A' && hdr[9] == 'I' && (hdr[10] == 1 || hdr[10] == 2)
 }
 
 // elfHeaderLen covers e_flags in a 32-bit header (offset 0x24), which is
@@ -347,6 +354,70 @@ func probeWindowing(ef *elf.File, info *LinuxInfo) {
 		info.Display = append(info.Display, tag)
 	}
 	sort.Strings(info.Display)
+}
+
+// probeShippedSDL adds the backends of an SDL library shipped with the
+// executable to its Display. An executable that imports SDL can only show
+// on what that library was built with, and its own strings say nothing
+// about it.
+func (s *scan) probeShippedSDL(c *Candidate) {
+	info := c.LinuxInfo
+	if info.SDL == "" || info.SDLBundled {
+		return
+	}
+	var soname string
+	for _, lib := range info.Imports {
+		if strings.HasPrefix(lib, "libSDL2-2.0.so") || strings.HasPrefix(lib, "libSDL3.so") {
+			soname = strings.ToLower(lib)
+			break
+		}
+	}
+	if soname == "" {
+		return
+	}
+	index, ok := s.shippedLibrary(parentDir(strings.ToLower(c.Path)), soname)
+	if !ok {
+		return
+	}
+	r, _, err := s.openRaw(index)
+	if err != nil {
+		s.logf("shipped sdl: %s", err)
+		return
+	}
+	ef, err := elf.NewFile(&readerAtFromSeeker{r})
+	if err != nil {
+		s.logf("shipped sdl: %s: %s", s.container.Files[index].Path, err)
+		return
+	}
+	defer ef.Close()
+	var lib LinuxInfo
+	lib.Imports, _ = ef.ImportedLibraries()
+	probeWindowing(ef, &lib)
+	info.SDLShipped = true
+	for _, tag := range lib.Display {
+		if !slices.Contains(info.Display, tag) {
+			info.Display = append(info.Display, tag)
+		}
+	}
+	sort.Strings(info.Display)
+}
+
+// shippedLibrary finds a library by soname where the loader paths game
+// launchers set up point: the executable's directory and the lib
+// directories beside or above it. The file may carry the full version
+// (libSDL2-2.0.so.0.3000.0) since archives rarely keep the soname symlink.
+func (s *scan) shippedLibrary(dir, soname string) (int, bool) {
+	parent := parentDir(dir)
+	dirs := []string{dir, dir + "/lib", dir + "/lib64", parent + "/lib", parent + "/lib64"}
+	for _, d := range dirs {
+		d = strings.TrimPrefix(d, "/")
+		for _, i := range s.filesInDir[d] {
+			if strings.HasPrefix(s.lowerFiles[i][strings.LastIndex(s.lowerFiles[i], "/")+1:], soname) {
+				return i, true
+			}
+		}
+	}
+	return 0, false
 }
 
 // hasCString reports whether needle is a whole NUL-terminated string in

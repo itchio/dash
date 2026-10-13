@@ -454,7 +454,7 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 		assert.EqualValues(t, dash.ArchArm64, c.LinuxInfo.Arch)
 		byPath[c.Path] = c.LinuxInfo
 	}
-	require.Len(t, byPath, 8)
+	require.Len(t, byPath, 9)
 
 	bundled := byPath["sdl2-bundled"]
 	assert.EqualValues(t, "2", bundled.SDL)
@@ -498,6 +498,13 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 	assert.Empty(t, packed.SDL)
 	assert.False(t, packed.SDLBundled)
 	assert.Empty(t, packed.Display)
+
+	shipped := byPath["shipped/game"]
+	assert.EqualValues(t, "2", shipped.SDL)
+	assert.False(t, shipped.SDLBundled)
+	assert.True(t, shipped.SDLShipped)
+	assert.EqualValues(t, []string{"kmsdrm", "wayland", "x11"}, shipped.Display, "x11 from the library's imports, the rest from its strings")
+	assert.False(t, shared.SDLShipped, "no library beside sdl2-shared")
 
 	// without the flag none of it is read
 	v, err = dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t)})
@@ -607,4 +614,58 @@ func Test_FilterDropsHelpersFirst(t *testing.T) {
 	v, err = dash.Configure(filepath.Join("testdata", "linux-helpers", "arch"), configureParams(t))
 	require.NoError(t, err)
 	assert.EqualValues(t, []string{"game.x86"}, candidatePaths(v.Filter(makeConsumer(t), linux)), "an amd64 helper does not eliminate a 386 launcher")
+}
+
+func Test_ConfigureAppImage(t *testing.T) {
+	v, err := dash.Configure(filepath.Join("testdata", "linux-appimage", "root"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	require.NoError(t, err)
+	byPath := map[string]*dash.Candidate{}
+	for _, c := range v.Candidates {
+		byPath[c.Path] = c
+	}
+	require.Len(t, byPath, 3)
+
+	image := byPath["Game.AppImage"]
+	assert.True(t, image.LinuxInfo.AppImage)
+	assert.Empty(t, image.LinuxInfo.SDL, "the stub says nothing about the game")
+
+	game := byPath["Game.AppImage.d/usr/bin/game"]
+	assert.False(t, game.LinuxInfo.AppImage)
+	assert.EqualValues(t, "2", game.LinuxInfo.SDL)
+	assert.True(t, game.LinuxInfo.SDLShipped)
+	assert.EqualValues(t, []string{"kmsdrm", "x11"}, game.LinuxInfo.Display)
+
+	// a host that mounts AppImages keeps the image, the shallowest candidate
+	filtered := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64"})
+	require.Len(t, filtered.Candidates, 1)
+	assert.EqualValues(t, "Game.AppImage", filtered.Candidates[0].Path)
+
+	// one that unpacks them takes the tree instead, and AppRun over the deeper game
+	unpacked := dash.FilterParams{OS: "linux", Arch: "arm64", UnpackedAppImages: true}
+	filtered = v.Filter(makeConsumer(t), unpacked)
+	require.Len(t, filtered.Candidates, 1)
+	assert.EqualValues(t, "Game.AppImage.d/AppRun", filtered.Candidates[0].Path)
+
+	// without AppRun the image is the shallowest candidate as before
+	packed := *v
+	packed.Candidates = nil
+	for _, c := range v.Candidates {
+		if c.Path != "Game.AppImage.d/AppRun" {
+			packed.Candidates = append(packed.Candidates, c)
+		}
+	}
+	filtered = packed.Filter(makeConsumer(t), unpacked)
+	require.Len(t, filtered.Candidates, 1)
+	assert.EqualValues(t, "Game.AppImage", filtered.Candidates[0].Path)
+
+	// AppRun as a symlink to the game stands in for it
+	v, err = dash.Configure(filepath.Join("testdata", "linux-appimage", "linked"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	require.NoError(t, err)
+	filtered = v.Filter(makeConsumer(t), unpacked)
+	require.Len(t, filtered.Candidates, 1)
+	linked := filtered.Candidates[0]
+	assert.EqualValues(t, "Game.AppImage.d/AppRun", linked.Path)
+	assert.EqualValues(t, dash.FlavorNativeLinux, linked.Flavor)
+	assert.EqualValues(t, 2, linked.Depth)
+	assert.True(t, linked.LinuxInfo.SDLShipped, "probed through the target")
 }
