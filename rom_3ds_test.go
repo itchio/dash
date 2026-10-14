@@ -31,7 +31,7 @@ func Test_ROM3DS(t *testing.T) {
 	copy(cartridge[0x100:], "NCSD")
 	mutate := func(data []byte, offset int, value uint64, width int) []byte {
 		data = append([]byte(nil), data...)
-		for i := 0; i < width; i++ {
+		for i := range width {
 			data[offset+i] = byte(value >> (i * 8))
 		}
 		return data

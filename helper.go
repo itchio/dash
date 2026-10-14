@@ -7,6 +7,7 @@ package dash
 //     chrome_crashpad_handler and chrome-sandbox next to an Electron shell
 
 import (
+	"slices"
 	"strings"
 )
 
@@ -66,10 +67,8 @@ func helperFor(s *scan, c *Candidate, lower string) string {
 		if rule.engine != "" && rule.engine != engine {
 			continue
 		}
-		for _, name := range rule.names {
-			if base == name {
-				return rule.helper
-			}
+		if slices.Contains(rule.names, base) {
+			return rule.helper
 		}
 	}
 	return ""

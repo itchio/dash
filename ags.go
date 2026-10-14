@@ -134,7 +134,7 @@ func agsDataOffset(dir []byte) (int64, bool) {
 	if !ok || libs > 64 {
 		return 0, false
 	}
-	for i := uint32(0); i < libs; i++ {
+	for range libs {
 		if _, ok := readString(); !ok {
 			return 0, false
 		}
@@ -143,7 +143,7 @@ func agsDataOffset(dir []byte) (int64, bool) {
 	if !ok || files > 100000 {
 		return 0, false
 	}
-	for i := uint32(0); i < files; i++ {
+	for range files {
 		name, ok := readString()
 		if !ok || pos+17 > len(dir) {
 			return 0, false

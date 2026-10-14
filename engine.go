@@ -1,5 +1,7 @@
 package dash
 
+import "slices"
+
 // Engine identifies the tool a game was made with. It is the key a consumer
 // uses to pick a runtime: a native candidate carries it as extra context, a
 // payload candidate carries it because the payload is nothing without it.
@@ -134,12 +136,7 @@ var enginePayloadFlavors = map[Flavor]bool{
 
 // IsPayload reports whether a candidate needs an external runtime.
 func (c *Candidate) IsPayload() bool {
-	for _, f := range PayloadFlavors {
-		if c.Flavor == f {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(PayloadFlavors, c.Flavor)
 }
 
 // IsNative reports whether a candidate is something a host OS can exec

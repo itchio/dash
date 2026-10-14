@@ -79,7 +79,7 @@ func fatMachArch(ra io.ReaderAt) (Arch, *MacosInfo) {
 	var archs []Arch
 	seen := make(map[Arch]bool)
 	var entry [20]byte
-	for i := uint32(0); i < nfat; i++ {
+	for i := range nfat {
 		if _, err := ra.ReadAt(entry[:], int64(8+i*20)); err != nil {
 			break
 		}

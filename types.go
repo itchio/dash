@@ -1,5 +1,7 @@
 package dash
 
+import "slices"
+
 // A Verdict contains a wealth of information on how to "launch" or "open" a specific
 // folder.
 type Verdict struct {
@@ -157,12 +159,7 @@ func (c *Candidate) HasMacosArch(arch Arch) bool {
 	if c.MacosInfo == nil {
 		return false
 	}
-	for _, a := range c.MacosInfo.Architectures {
-		if a == arch {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(c.MacosInfo.Architectures, arch)
 }
 
 // Contains information specific to native windows executables
