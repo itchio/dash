@@ -53,12 +53,12 @@ github.com/itchio/arkive v0.0.0-20260424164943-5eabdbdce5c8 h1:pSMXKB+oJ1ebQykvG
 github.com/itchio/arkive v0.0.0-20260424164943-5eabdbdce5c8/go.mod h1:1jjAAhUnNDwHiqnC9YpwH5inlJ1/zZ+eL+MmEh8oGb0=
 github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4 h1:vOYjkMs+aVNeHU0d6MCctyEyxn02n0l3Zw6dsU9AsEs=
 github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4/go.mod h1:1/4tbTrV3G/Su53pnKBpa5mv3cVkLweRAq/xRnulSQI=
-github.com/itchio/httpkit v0.0.0-20260213231528-25109ada88c9 h1:xSd/0N0YIsPZrLCIdRgUXSg40/OdvRoklto3KiSzCuE=
-github.com/itchio/httpkit v0.0.0-20260213231528-25109ada88c9/go.mod h1:/eodDULLFn8KrWObOlT7AF5LcFi8Ff1beHXcwdLMe5g=
+github.com/itchio/httpkit v0.0.0-20261014001543-804157f68bf3 h1:Hr0zGbUvURlg610WFTkr16iWPdDF3bKrTlQaeIMU+ts=
+github.com/itchio/httpkit v0.0.0-20261014001543-804157f68bf3/go.mod h1:/eodDULLFn8KrWObOlT7AF5LcFi8Ff1beHXcwdLMe5g=
 github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51 h1:jipXtdsZClshNO8fKK8ItiVyqE9bKA09as+qjW/yjG0=
 github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51/go.mod h1:iLS+Eq+S26jTC4pbdDH6N5XtDqrjb4IOXtjj1HCzbuk=
-github.com/itchio/lake v0.0.0-20260916225039-59aa5e42ebf8 h1:RxRYB+O8DTjmG9dX0b3xsgMqqDJPWmy8d+L/Cwn7rhw=
-github.com/itchio/lake v0.0.0-20260916225039-59aa5e42ebf8/go.mod h1:ajw9UcYrdG4y78l4YeWZOAcHAaMx024gTOuufMer8g4=
+github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf h1:UeDwcZg6FftcbFWUqOCqCjWjB7e+pecC6wgLpZA9i4U=
+github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf/go.mod h1:ABzRyUqsKcRQxAKFp7uac7C4z4Y0C1T0uDvBoDVx77g=
 github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c h1:lXQ96h2NYErL8rYnxtUImcC9quh8y6HGZkKwKP38PPA=
 github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c/go.mod h1:A7gJOzzxHbG7bfBrabE95NH8M+5sAC/9iWHNq3oMLVI=
 github.com/itchio/screw v0.0.0-20260221011136-e674b460b040 h1:2nzurbZLgBSqNyLlIuO2iClpivQ7L5DX75kvCMqZ9e0=

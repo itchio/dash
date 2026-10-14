@@ -1,6 +1,7 @@
 package dash_test
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -23,7 +24,7 @@ func configureEngine(t *testing.T, name string, params ...dash.ConfigureParams) 
 		p = params[0]
 		p.Consumer = makeConsumer(t)
 	}
-	v, err := dash.Configure(filepath.Join("testdata", "engines", name), p)
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "engines", name), p)
 	require.NoError(t, err)
 
 	byPath := make(candidateMap)
@@ -81,7 +82,7 @@ func candidatePaths(v dash.Verdict) []string {
 
 func Test_DeepProbe(t *testing.T) {
 	// the fixtures are header-only ELFs, so the probe must fail gracefully
-	v, err := dash.Configure(filepath.Join("testdata", "linux-arch"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "linux-arch"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	for _, c := range v.Candidates {
 		if c.Path == "game.aarch64" {
@@ -105,7 +106,7 @@ func Test_DeepProbe(t *testing.T) {
 	}
 	require.NoError(t, os.WriteFile(filepath.Join(root, "sh"), sh, 0755))
 
-	v, err = dash.Configure(root, dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err = dash.Configure(context.Background(), root, dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	require.Len(t, v.Candidates, 1)
 	info := v.Candidates[0].LinuxInfo
@@ -116,7 +117,7 @@ func Test_DeepProbe(t *testing.T) {
 	t.Logf("imports=%v glibc=%s", info.Imports, info.GlibcVersion)
 
 	// without the flag, the record stays at the header
-	v, err = dash.Configure(root, dash.ConfigureParams{Consumer: makeConsumer(t)})
+	v, err = dash.Configure(context.Background(), root, dash.ConfigureParams{Consumer: makeConsumer(t)})
 	require.NoError(t, err)
 	assert.Empty(t, v.Candidates[0].LinuxInfo.Imports)
 
@@ -374,7 +375,7 @@ func Test_RPGMaker(t *testing.T) {
 
 	// without a runtime the html inside the project is what a desktop runs,
 	// the folder must not knock it out through the html rule
-	sub, err := dash.Configure(filepath.Join("testdata", "engines", "rpgmaker", "mz"), configureParams(t))
+	sub, err := dash.Configure(context.Background(), filepath.Join("testdata", "engines", "rpgmaker", "mz"), configureParams(t))
 	require.NoError(t, err)
 	win := sub.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
 	assert.EqualValues(t, []string{"index.html"}, candidatePaths(win))

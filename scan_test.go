@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -86,7 +87,7 @@ func TestReadBundleExecutableSizeCap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := pools.New(container, root)
+	pool, err := pools.New(context.Background(), container, root)
 	if err != nil {
 		t.Fatal(err)
 	}

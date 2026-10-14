@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/itchio/arkive v0.0.0-20260424164943-5eabdbdce5c8
 	github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4
-	github.com/itchio/lake v0.0.0-20260916225039-59aa5e42ebf8
+	github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf
 	github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c
 	github.com/itchio/spellbook v0.0.0-20260223022740-4f847d058148
 	github.com/itchio/wizardry v0.0.0-20260222230103-ec734b409e9c
@@ -31,7 +31,7 @@ require (
 	github.com/getlantern/ops v0.0.0-20200403153110-8476b16edcd6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
-	github.com/itchio/httpkit v0.0.0-20260213231528-25109ada88c9 // indirect
+	github.com/itchio/httpkit v0.0.0-20261014001543-804157f68bf3 // indirect
 	github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51 // indirect
 	github.com/itchio/screw v0.0.0-20260221011136-e674b460b040 // indirect
 	github.com/klauspost/compress v1.18.7 // indirect

@@ -1,6 +1,7 @@
 package dash_test
 
 import (
+	"context"
 	"path/filepath"
 	"testing"
 
@@ -36,7 +37,7 @@ func fixParams(t *testing.T) dash.FixPermissionsParams {
 func Test_ConfigureWindows(t *testing.T) {
 	root := filepath.Join("testdata", "windows")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 4, len(v.Candidates), "finds all candidates on first walk")
@@ -55,7 +56,7 @@ func Test_ConfigureWindows(t *testing.T) {
 func Test_ConfigureWindowsIL2CPP(t *testing.T) {
 	root := filepath.Join("testdata", "windows-il2cpp")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
@@ -74,7 +75,7 @@ func Test_ConfigureWindowsIL2CPP(t *testing.T) {
 func Test_ConfigureWindowsHtml(t *testing.T) {
 	root := filepath.Join("testdata", "windows-html")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
@@ -96,7 +97,7 @@ func Test_ConfigureWindowsFakeShebang(t *testing.T) {
 	// see https://github.com/itchio/itch/issues/3468
 	root := filepath.Join("testdata", "windows-fake-shebang")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 1, len(v.Candidates), "only the html file is a candidate")
@@ -110,7 +111,7 @@ func Test_ConfigureWindowsFakeShebang(t *testing.T) {
 func Test_ConfigureScriptAndHtml(t *testing.T) {
 	root := filepath.Join("testdata", "script-and-html")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
@@ -131,7 +132,7 @@ func Test_ConfigureJarAndHtml(t *testing.T) {
 	// none of the candidates are native windows executables
 	root := filepath.Join("testdata", "jar-and-html")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
@@ -145,7 +146,7 @@ func Test_ConfigureJarAndHtml(t *testing.T) {
 func Test_ConfigureDarwin(t *testing.T) {
 	root := filepath.Join("testdata", "darwin")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 4, len(v.Candidates), "finds all candidates on first walk")
 
@@ -162,7 +163,7 @@ func Test_ConfigureDarwin(t *testing.T) {
 func Test_ConfigureDarwinNested(t *testing.T) {
 	root := filepath.Join("testdata", "darwin-nested")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 4, len(v.Candidates), "finds all candidates on first walk")
 
@@ -178,7 +179,7 @@ func Test_ConfigureDarwinNested(t *testing.T) {
 func Test_ConfigureDarwinGhost(t *testing.T) {
 	root := filepath.Join("testdata", "darwin-ghost")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 3, len(v.Candidates), "finds both execs and one valid app bundle")
 
@@ -194,7 +195,7 @@ func Test_ConfigureDarwinGhost(t *testing.T) {
 func Test_ConfigureDarwinSymlink(t *testing.T) {
 	root := filepath.Join("testdata", "darwin-symlink")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 1, len(v.Candidates), "finds all candidates on first walk")
 
@@ -210,7 +211,7 @@ func Test_ConfigureDarwinSymlink(t *testing.T) {
 func Test_ConfigureLinux(t *testing.T) {
 	root := filepath.Join("testdata", "linux")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 5, len(v.Candidates), "finds all candidates on first walk")
 
@@ -227,7 +228,7 @@ func Test_ConfigureLinux(t *testing.T) {
 func Test_ConfigureLinuxLibs(t *testing.T) {
 	root := filepath.Join("testdata", "linux-libs")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 1, len(v.Candidates), "finds all candidates on first walk")
 
@@ -244,7 +245,7 @@ func Test_ConfigureLinuxLibs(t *testing.T) {
 func Test_ConfigureLinuxDualArch(t *testing.T) {
 	root := filepath.Join("testdata", "linux-dual-arch")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 2, len(v.Candidates), "finds all candidates on first walk")
 
@@ -266,7 +267,7 @@ func Test_ConfigureLinuxDualArch(t *testing.T) {
 func Test_ConfigureHtmlMany(t *testing.T) {
 	root := filepath.Join("testdata", "html", "many")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 1, len(v.Candidates), "finds all candidates on first walk")
 
@@ -282,7 +283,7 @@ func Test_ConfigureHtmlMany(t *testing.T) {
 func Test_ConfigureHtmlNested(t *testing.T) {
 	root := filepath.Join("testdata", "html", "nested")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 1, len(v.Candidates), "finds all candidates on first walk")
 
@@ -298,7 +299,7 @@ func Test_ConfigureHtmlNested(t *testing.T) {
 func Test_ConfigureBiggerIsBetter(t *testing.T) {
 	root := filepath.Join("testdata", "bigger-is-better")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
 
@@ -311,7 +312,7 @@ func Test_ConfigureBiggerIsBetter(t *testing.T) {
 func Test_ConfigureBlacklist(t *testing.T) {
 	root := filepath.Join("testdata", "linux-nodewebkit")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 	assert.EqualValues(t, 3, len(v.Candidates), "finds all candidates on first walk")
 
@@ -331,7 +332,7 @@ func Test_ConfigureBlacklist(t *testing.T) {
 func Test_ConfigureDarwinArch(t *testing.T) {
 	root := filepath.Join("testdata", "darwin-arch")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	byPath := make(map[string]*dash.Candidate)
@@ -387,7 +388,7 @@ func Test_ConfigureDarwinArch(t *testing.T) {
 func Test_ConfigureDarwinArchNested(t *testing.T) {
 	root := filepath.Join("testdata", "darwin-arch-nested")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	paths := func(v dash.Verdict) []string {
@@ -411,7 +412,7 @@ func Test_ConfigureLinuxArch(t *testing.T) {
 	// the ELF class only says 64-bit, the machine field says which
 	root := filepath.Join("testdata", "linux-arch")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	byPath := make(map[string]dash.Arch)
@@ -444,7 +445,7 @@ func Test_ConfigureLinuxArch(t *testing.T) {
 }
 
 func Test_ConfigureLinuxSDL(t *testing.T) {
-	v, err := dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	byPath := map[string]*dash.LinuxInfo{}
 	for _, c := range v.Candidates {
@@ -507,7 +508,7 @@ func Test_ConfigureLinuxSDL(t *testing.T) {
 	assert.False(t, shared.SDLShipped, "no library beside sdl2-shared")
 
 	// without the flag none of it is read
-	v, err = dash.Configure(filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t)})
+	v, err = dash.Configure(context.Background(), filepath.Join("testdata", "linux-sdl"), dash.ConfigureParams{Consumer: makeConsumer(t)})
 	require.NoError(t, err)
 	for _, c := range v.Candidates {
 		if c.Flavor != dash.FlavorNativeLinux {
@@ -522,7 +523,7 @@ func Test_FilterLinuxArch(t *testing.T) {
 	// one binary per architecture, plus a FreeBSD one that only looks like linux
 	root := filepath.Join("testdata", "linux-arch")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	paths := func(v dash.Verdict) []string {
@@ -555,7 +556,7 @@ func Test_FilterLinuxArchFallback(t *testing.T) {
 	// all there is
 	root := filepath.Join("testdata", "linux-arch-fallback")
 
-	v, err := dash.Configure(root, configureParams(t))
+	v, err := dash.Configure(context.Background(), root, configureParams(t))
 	assert.NoError(t, err, "walks without problems")
 
 	paths := func(v dash.Verdict) []string {
@@ -576,7 +577,7 @@ func Test_FilterLinuxArchFallback(t *testing.T) {
 func Test_ConfigureLinuxSharedObjects(t *testing.T) {
 	// plugins are ET_DYN like position independent executables, but have no
 	// program interpreter; split debug info is dropped by extension
-	v, err := dash.Configure(filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t)})
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t)})
 	require.NoError(t, err)
 
 	var found []string
@@ -587,7 +588,7 @@ func Test_ConfigureLinuxSharedObjects(t *testing.T) {
 	}
 	assert.ElementsMatch(t, []string{"game", "game-static-pie"}, found)
 
-	v, err = dash.Configure(filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err = dash.Configure(context.Background(), filepath.Join("testdata", "linux-plugins"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	for _, c := range v.Candidates {
 		switch c.Path {
@@ -602,22 +603,22 @@ func Test_ConfigureLinuxSharedObjects(t *testing.T) {
 func Test_FilterDropsHelpersFirst(t *testing.T) {
 	linux := dash.FilterParams{OS: "linux", Arch: "amd64"}
 
-	v, err := dash.Configure(filepath.Join("testdata", "linux-helpers", "lone"), configureParams(t))
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "linux-helpers", "lone"), configureParams(t))
 	require.NoError(t, err)
 	require.Len(t, v.Candidates, 1)
 	assert.Empty(t, candidatePaths(v.Filter(makeConsumer(t), linux)), "a lone helper is not a launcher")
 
-	v, err = dash.Configure(filepath.Join("testdata", "linux-helpers", "depth"), configureParams(t))
+	v, err = dash.Configure(context.Background(), filepath.Join("testdata", "linux-helpers", "depth"), configureParams(t))
 	require.NoError(t, err)
 	assert.EqualValues(t, []string{"bin/game"}, candidatePaths(v.Filter(makeConsumer(t), linux)), "a deeper launcher beats a root helper")
 
-	v, err = dash.Configure(filepath.Join("testdata", "linux-helpers", "arch"), configureParams(t))
+	v, err = dash.Configure(context.Background(), filepath.Join("testdata", "linux-helpers", "arch"), configureParams(t))
 	require.NoError(t, err)
 	assert.EqualValues(t, []string{"game.x86"}, candidatePaths(v.Filter(makeConsumer(t), linux)), "an amd64 helper does not eliminate a 386 launcher")
 }
 
 func Test_ConfigureAppImage(t *testing.T) {
-	v, err := dash.Configure(filepath.Join("testdata", "linux-appimage", "root"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err := dash.Configure(context.Background(), filepath.Join("testdata", "linux-appimage", "root"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	byPath := map[string]*dash.Candidate{}
 	for _, c := range v.Candidates {
@@ -659,7 +660,7 @@ func Test_ConfigureAppImage(t *testing.T) {
 	assert.EqualValues(t, "Game.AppImage", filtered.Candidates[0].Path)
 
 	// AppRun as a symlink to the game stands in for it
-	v, err = dash.Configure(filepath.Join("testdata", "linux-appimage", "linked"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
+	v, err = dash.Configure(context.Background(), filepath.Join("testdata", "linux-appimage", "linked"), dash.ConfigureParams{Consumer: makeConsumer(t), DeepProbe: true})
 	require.NoError(t, err)
 	filtered = v.Filter(makeConsumer(t), unpacked)
 	require.Len(t, filtered.Candidates, 1)

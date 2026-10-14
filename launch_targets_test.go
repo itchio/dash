@@ -3,6 +3,7 @@ package dash
 import (
 	"archive/zip"
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -26,7 +27,7 @@ func TestLaunchTargetsFolderAndZip(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantHash := fmt.Sprintf("%x", sha256.Sum256(content))
-	folder, err := ScanLaunchTargets(root, ConfigureParams{})
+	folder, err := ScanLaunchTargets(context.Background(), root, ConfigureParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +50,7 @@ func TestLaunchTargetsFolderAndZip(t *testing.T) {
 	if err := os.WriteFile(archive, buf.Bytes(), 0644); err != nil {
 		t.Fatal(err)
 	}
-	zipped, err := ScanLaunchTargets(archive, ConfigureParams{})
+	zipped, err := ScanLaunchTargets(context.Background(), archive, ConfigureParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +64,7 @@ func TestLaunchTargetsEmptyAndFiltered(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "index.html"), []byte("game"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	targets, err := ScanLaunchTargets(root, ConfigureParams{Filter: func(string) tlc.FilterResult { return tlc.FilterIgnore }})
+	targets, err := ScanLaunchTargets(context.Background(), root, ConfigureParams{Filter: func(string) tlc.FilterResult { return tlc.FilterIgnore }})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,7 +151,7 @@ func TestLaunchTargetsContainerSelectionAndOwnership(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	container, err := tlc.WalkAny(root, tlc.WalkOpts{Filter: func(name string) tlc.FilterResult {
+	container, err := tlc.WalkAny(context.Background(), root, tlc.WalkOpts{Filter: func(name string) tlc.FilterResult {
 		if name == "excluded.bat" {
 			return tlc.FilterIgnore
 		}
@@ -159,7 +160,7 @@ func TestLaunchTargetsContainerSelectionAndOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pool, err := pools.New(container, root)
+	pool, err := pools.New(context.Background(), container, root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,7 +188,7 @@ type ownershipPool struct {
 func (p *ownershipPool) Close() error { p.tracker.closed = true; return nil }
 
 func TestLaunchTargetsDeepProbeAndDirectory(t *testing.T) {
-	targets, err := ScanLaunchTargets("testdata/linux-sdl", ConfigureParams{})
+	targets, err := ScanLaunchTargets(context.Background(), "testdata/linux-sdl", ConfigureParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +201,7 @@ func TestLaunchTargetsDeepProbeAndDirectory(t *testing.T) {
 	if !foundImports {
 		t.Fatal("launch profile did not enable deep probing")
 	}
-	targets, err = ScanLaunchTargets("testdata/darwin", ConfigureParams{})
+	targets, err = ScanLaunchTargets(context.Background(), "testdata/darwin", ConfigureParams{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -240,7 +241,7 @@ func TestLaunchTargetsZeroByteFile(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "index.html"), nil, 0644); err != nil {
 		t.Fatal(err)
 	}
-	targets, err := ScanLaunchTargets(root, ConfigureParams{})
+	targets, err := ScanLaunchTargets(context.Background(), root, ConfigureParams{})
 	if err != nil {
 		t.Fatal(err)
 	}

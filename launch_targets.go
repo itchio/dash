@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"context"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -33,8 +34,8 @@ type LaunchTarget struct {
 // ScanLaunchTargets produces the launch report for an upload. It reads every
 // candidate file in full to hash it, so run it at scan time, not when
 // launching. Results are not filtered for the host.
-func ScanLaunchTargets(root string, params ConfigureParams) ([]LaunchTarget, error) {
-	container, pool, err := openConfigurePool(root, params)
+func ScanLaunchTargets(ctx context.Context, root string, params ConfigureParams) ([]LaunchTarget, error) {
+	container, pool, err := openConfigurePool(ctx, root, params)
 	if err != nil {
 		return nil, err
 	}

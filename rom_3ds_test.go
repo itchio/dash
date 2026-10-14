@@ -1,6 +1,7 @@
 package dash_test
 
 import (
+	"context"
 	"encoding/binary"
 	"os"
 	"path/filepath"
@@ -67,7 +68,7 @@ func Test_ROM3DS(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			dir := t.TempDir()
 			require.NoError(t, os.WriteFile(filepath.Join(dir, tt.name), tt.data, 0644))
-			v, err := dash.Configure(dir, configureParams(t))
+			v, err := dash.Configure(context.Background(), dir, configureParams(t))
 			require.NoError(t, err)
 			if tt.format == "" {
 				assert.Empty(t, v.Candidates)

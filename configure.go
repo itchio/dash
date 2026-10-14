@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -181,8 +182,8 @@ var detectors = []engineDetector{
 
 // Configure walks a directory and finds potential launch candidates,
 // grouped together into a verdict.
-func Configure(root string, params ConfigureParams) (*Verdict, error) {
-	container, pool, err := openConfigurePool(root, params)
+func Configure(ctx context.Context, root string, params ConfigureParams) (*Verdict, error) {
+	container, pool, err := openConfigurePool(ctx, root, params)
 	if err != nil {
 		return nil, err
 	}
@@ -195,16 +196,16 @@ func Configure(root string, params ConfigureParams) (*Verdict, error) {
 	return verdict, nil
 }
 
-func openConfigurePool(root string, params ConfigureParams) (*tlc.Container, lake.Pool, error) {
+func openConfigurePool(ctx context.Context, root string, params ConfigureParams) (*tlc.Container, lake.Pool, error) {
 	filter := params.Filter
 	if filter == nil {
 		filter = tlc.PresetFilter
 	}
-	container, err := tlc.WalkAny(root, tlc.WalkOpts{Filter: filter})
+	container, err := tlc.WalkAny(ctx, root, tlc.WalkOpts{Filter: filter})
 	if err != nil {
 		return nil, nil, err
 	}
-	pool, err := pools.New(container, root)
+	pool, err := pools.New(ctx, container, root)
 	if err != nil {
 		return nil, nil, errors.Wrap(err, "creating pool to configure folder")
 	}
