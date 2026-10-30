@@ -136,8 +136,8 @@ type ConfigureParams struct {
 	Stats  *VerdictStats
 
 	// MaxProbeBytes caps how many distinct bytes of any single file
-	// sniffing and engine detection together may read. Zero means
-	// DefaultMaxProbeBytes. The magic matchers read a 128 KiB window at a
+	// sniffing and engine detection together may read, except for Android
+	// packages, which have a fixed limit. Zero means DefaultMaxProbeBytes. The magic matchers read a 128 KiB window at a
 	// time, so values below that stop executables from being recognized
 	// at all.
 	MaxProbeBytes int64
@@ -176,6 +176,9 @@ var detectors = []engineDetector{
 	constructDetector{},
 	shellDetector{},
 	pythonDetector{},
+	// after everything that annotates natives: an APK takes no engine from
+	// the files around it
+	androidDetector{},
 	// last: it reads the engines the others set
 	helperDetector{},
 }
@@ -775,6 +778,11 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 				consumer.Debugf("Excluding (%s) - arm64-only, but arch filter is (%s)", c.Path, archFilter)
 				keep = false
 			}
+		case FlavorAndroid:
+			if excludesOS("android") {
+				consumer.Debugf("Excluding (%s) - android package, os filter is (%s)", c.Path, osFilter)
+				keep = false
+			}
 		case FlavorScript:
 			// shebang scripts run on linux and macOS, but not windows
 			if hasOS("windows") {
@@ -787,6 +795,15 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 			compatibleCandidates = append(compatibleCandidates, c)
 		}
 	}
+	// on android a package is the real launcher: without this the depth
+	// cutoff and the love rule below can hand the device a readme.html or a
+	// .love it has no runtime for
+	if hasOS("android") {
+		if apks := selectByFlavor(compatibleCandidates, FlavorAndroid); len(apks) > 0 {
+			compatibleCandidates = apks
+		}
+	}
+
 	// a payload that shares its path with an executable (a fused LÖVE exe,
 	// an embedded Godot pck) is that executable seen through a runtime's
 	// eyes. Hosts without runtimes launch the executable, and hosts with

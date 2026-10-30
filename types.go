@@ -40,6 +40,9 @@ type Candidate struct {
 	// MacosInfo contains information specific to native macOS candidates
 	// @optional
 	MacosInfo *MacosInfo `json:"macosInfo,omitempty"`
+	// AndroidInfo contains information specific to Android packages
+	// @optional
+	AndroidInfo *AndroidInfo `json:"androidInfo,omitempty"`
 	// LoveInfo contains information specific to Love2D bundles (`.love` files)
 	// @optional
 	LoveInfo *LoveInfo `json:"loveInfo,omitempty"`
@@ -61,7 +64,8 @@ type Candidate struct {
 	// "renpy" for its python and zsync, "electron" or "nwjs" for crashpad
 	// and sandbox processes, "dotnet" for createdump, "java" for a bundled
 	// JRE, "node" for anything under node_modules, "unity" and "unreal"
-	// for their crash handlers. Filter drops helpers.
+	// for their crash handlers, "android" for a split package, which only
+	// installs along with its base. Filter drops helpers.
 	// @optional
 	Helper string `json:"helper,omitempty"`
 }
@@ -130,6 +134,8 @@ const (
 	FlavorROM Flavor = "rom"
 	// Playdate game bundle: the folder holding pdxinfo
 	FlavorPlaydatePdx Flavor = "playdate-pdx"
+	// Android application package (.apk)
+	FlavorAndroid Flavor = "android"
 )
 
 // The architecture of an executable
@@ -214,6 +220,84 @@ type MacosInfo struct {
 	// All CPU architectures found in the binary (for universal/fat binaries)
 	// @optional
 	Architectures []Arch `json:"architectures,omitempty"`
+}
+
+// Contains information specific to Android packages. Compatibility fields are
+// what the package declares, not what was tested: an app that never mentions a
+// gamepad may still work with one.
+type AndroidInfo struct {
+	// Application id, stable across versions of the same app
+	// @optional
+	Package string `json:"package,omitempty"`
+	// Name of this split when the package is one part of an app
+	// @optional
+	Split string `json:"split,omitempty"`
+	// True when the app can't be installed without further split packages
+	// @optional
+	SplitRequired bool `json:"splitRequired,omitempty"`
+	// Internal version. The system refuses to update to a lower one.
+	// @optional
+	VersionCode int64 `json:"versionCode,omitempty"`
+	// Version shown to users. Empty when it is a resource reference.
+	// @optional
+	VersionName string `json:"versionName,omitempty"`
+	// Lowest API level the package installs on. Zero when undeclared.
+	// @optional
+	MinSdk int `json:"minSdk,omitempty"`
+	// API level the package was built for
+	// @optional
+	TargetSdk int `json:"targetSdk,omitempty"`
+	// Directories under lib/, such as arm64-v8a. Empty means no native code,
+	// which runs on any architecture.
+	// @optional
+	ABIs []string `json:"abis,omitempty"`
+	// Lowest OpenGL ES version the package requires, such as "3.0"
+	// @optional
+	GLESVersion string `json:"glesVersion,omitempty"`
+	// Device features the package requires to install
+	// @optional
+	RequiredFeatures []string `json:"requiredFeatures,omitempty"`
+	// Device features the package can use but does not need
+	// @optional
+	OptionalFeatures []string `json:"optionalFeatures,omitempty"`
+	// Fully qualified component to start
+	// @optional
+	LauncherActivity string `json:"launcherActivity,omitempty"`
+	// Launcher surfaces the package declares across its activities
+	// @optional
+	LauncherCategories []string `json:"launcherCategories,omitempty"`
+	// Screen orientation of the launcher activity, in manifest notation
+	// @optional
+	Orientation string `json:"orientation,omitempty"`
+	// Permissions the package requests
+	// @optional
+	Permissions []string `json:"permissions,omitempty"`
+	// True for a debuggable build
+	// @optional
+	Debuggable bool `json:"debuggable,omitempty"`
+	// Who signed the package. The system only updates an installed app from
+	// a package with the same signer.
+	// @optional
+	Signer *AndroidSigner `json:"signer,omitempty"`
+}
+
+// AndroidSigner identifies the certificate that signed an Android package
+type AndroidSigner struct {
+	// SHA-256 of the DER certificate, in hex. Empty when no certificate could
+	// be read. Nothing here checks the signature, and certificates are
+	// public, so a forged package can claim any signer. A mismatch means
+	// something, a match proves nothing: only the system's check at install
+	// time does.
+	// @optional
+	Sha256 string `json:"sha256,omitempty"`
+	// Certificate subject
+	// @optional
+	Subject string `json:"subject,omitempty"`
+	// Signature schemes present: "v1", "v2", "v3", "v3.1"
+	Schemes []string `json:"schemes"`
+	// True for the certificate build tools generate per machine
+	// @optional
+	Debug bool `json:"debug,omitempty"`
 }
 
 // Contains information specific to native Linux executables

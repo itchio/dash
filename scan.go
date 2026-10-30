@@ -165,7 +165,7 @@ func (s *scan) open(index int) (*probeReader, error) {
 	return newProbeReader(r, s.pool.GetSize(int64(index)), budget), nil
 }
 
-// openRaw returns an unbudgeted reader, for the deep probe only.
+// openRaw returns an unbudgeted reader, for probes that set their own limit.
 func (s *scan) openRaw(index int) (io.ReadSeeker, int64, error) {
 	r, err := s.pool.GetReadSeeker(int64(index))
 	if err != nil {

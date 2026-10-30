@@ -29,6 +29,7 @@ type LaunchTarget struct {
 	LinuxInfo   *LinuxInfo   `json:"linux_info,omitempty"`
 	WindowsInfo *WindowsInfo `json:"windows_info,omitempty"`
 	MacosInfo   *MacosInfo   `json:"macos_info,omitempty"`
+	AndroidInfo *AndroidInfo `json:"android_info,omitempty"`
 }
 
 // ScanLaunchTargets produces the launch report for an upload. It reads every
@@ -67,7 +68,7 @@ func launchTargetsFromVerdict(verdict *Verdict, container *tlc.Container, pool l
 		target := LaunchTarget{
 			Path: c.Path, Depth: c.Depth, Flavor: c.Flavor, Arch: c.Arch,
 			Helper: c.Helper, Engine: c.Engine, LinuxInfo: c.LinuxInfo,
-			WindowsInfo: c.WindowsInfo, MacosInfo: c.MacosInfo,
+			WindowsInfo: c.WindowsInfo, MacosInfo: c.MacosInfo, AndroidInfo: c.AndroidInfo,
 		}
 		if index, ok := indices[c.Path]; ok {
 			target.Size = container.Files[index].Size

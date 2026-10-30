@@ -39,6 +39,8 @@ const (
 	EnginePython    Engine = "python"
 	EngineLibGDX    Engine = "libgdx"
 	EngineLWJGL     Engine = "lwjgl"
+	EngineFlutter   Engine = "flutter"
+	EngineCordova   Engine = "cordova"
 )
 
 // EngineInfo describes what made a candidate and, for payloads, what runtime
@@ -143,7 +145,7 @@ func (c *Candidate) IsPayload() bool {
 // directly (including scripts and app bundles).
 func (c *Candidate) IsNative() bool {
 	switch c.Flavor {
-	case FlavorNativeLinux, FlavorNativeWindows, FlavorNativeMacos, FlavorAppMacos, FlavorScript, FlavorScriptWindows:
+	case FlavorNativeLinux, FlavorNativeWindows, FlavorNativeMacos, FlavorAppMacos, FlavorAndroid, FlavorScript, FlavorScriptWindows:
 		return true
 	}
 	return false

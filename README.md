@@ -8,6 +8,7 @@ dash "configures" a folder, which means it looks at its contents
 and determines interesting launch targets such as:
 
   * Native Windows, Linux & macOS executables
+  * Android packages (.apk)
   * HTML index files
   * .jar files, .love files, etc.
   * Engine payloads: Godot packs, GameMaker data files, PICO-8 carts,
