@@ -275,6 +275,10 @@ type AndroidInfo struct {
 	// True for a debuggable build
 	// @optional
 	Debuggable bool `json:"debuggable,omitempty"`
+	// True when the package links Google Play services, which some handhelds
+	// lack. It may still run without them.
+	// @optional
+	PlayServices bool `json:"playServices,omitempty"`
 	// Who signed the package. The system only updates an installed app from
 	// a package with the same signer.
 	// @optional

@@ -347,6 +347,7 @@ func parseAndroidManifest(data []byte) *AndroidInfo {
 		case "application":
 			info.Debuggable = c.attr(attrDebuggable).boolean(false)
 			info.SplitRequired = c.attr(attrIsSplitRequired).boolean(false) || c.attr(attrRequiredSplitTypes).text() != "" || requiresSplits(c)
+			info.PlayServices = metaData(c, "com.google.android.gms.version") != nil
 			info.readLauncher(c)
 		}
 	}
@@ -357,12 +358,19 @@ func parseAndroidManifest(data []byte) *AndroidInfo {
 }
 
 func requiresSplits(app *axmlNode) bool {
-	for _, c := range app.children {
-		if c.name == "meta-data" && c.attr(attrName).text() == "com.android.vending.splits.required" {
-			return c.attr(attrValue).boolean(false)
-		}
+	if c := metaData(app, "com.android.vending.splits.required"); c != nil {
+		return c.attr(attrValue).boolean(false)
 	}
 	return false
+}
+
+func metaData(app *axmlNode, name string) *axmlNode {
+	for _, c := range app.children {
+		if c.name == "meta-data" && c.attr(attrName).text() == name {
+			return c
+		}
+	}
+	return nil
 }
 
 func (info *AndroidInfo) readLauncher(app *axmlNode) {

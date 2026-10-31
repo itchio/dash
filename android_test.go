@@ -449,11 +449,13 @@ func Test_AndroidManifestAdversarial(t *testing.T) {
 			{name: "uses-permission", attrs: []testAttr{permission}},
 			{name: "application", children: []testTag{
 				{name: "meta-data", attrs: []testAttr{str(attrName, "com.android.vending.splits.required"), flag(attrValue, true)}},
+				{name: "meta-data", attrs: []testAttr{str(attrName, "com.google.android.gms.version")}},
 			}},
 		},
 	}, true))
 	assert.Equal(t, []string{"android.permission.READ_SMS"}, info.Permissions)
 	assert.True(t, info.SplitRequired)
+	assert.True(t, info.PlayServices)
 }
 
 func Test_APKSplitIsHelper(t *testing.T) {
