@@ -11,6 +11,7 @@ require (
 	github.com/itchio/wizardry v0.0.0-20260222230103-ec734b409e9c
 	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.11.1
+	github.com/ulikunitz/xz v0.5.16
 	howett.net/plist v1.0.1
 )
 
