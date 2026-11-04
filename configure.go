@@ -136,8 +136,10 @@ type ConfigureParams struct {
 	Stats  *VerdictStats
 
 	// MaxProbeBytes caps how many distinct bytes of any single file
-	// sniffing and engine detection together may read, except for Android
-	// packages, which have a fixed limit. Zero means DefaultMaxProbeBytes. The magic matchers read a 128 KiB window at a
+	// sniffing and engine detection together may read. Android packages
+	// (apkProbeBytes) and the Windows installer sniff (installerProbeBytes)
+	// have fixed budgets of their own on top of it. Zero means
+	// DefaultMaxProbeBytes. The magic matchers read a 128 KiB window at a
 	// time, so values below that stop executables from being recognized
 	// at all.
 	MaxProbeBytes int64
@@ -939,7 +941,7 @@ func (v Verdict) filterHost(consumer *state.Consumer, params FilterParams) Verdi
 	if hasOS("windows") {
 		windowsCandidates := selectByFlavor(bestCandidates, FlavorNativeWindows)
 		nonInstallerCandidates := selectByFunc(windowsCandidates, func(c *Candidate) bool {
-			if c.WindowsInfo != nil && c.WindowsInfo.InstallerType != "" {
+			if c.WindowsInfo != nil && c.WindowsInfo.InstallerType != "" && !c.installerLaunchesGame() {
 				consumer.Debugf("Excluding (%s) - installer of type (%s)", c.Path, c.WindowsInfo.InstallerType)
 				return false // false means "is an installer"
 			}

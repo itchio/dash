@@ -210,8 +210,22 @@ const (
 	WindowsInstallerTypeInno WindowsInstallerType = "inno"
 	// NSIS installers
 	WindowsInstallerTypeNullsoft WindowsInstallerType = "nsis"
-	// Self-extracting installers that 7-zip knows how to extract
+	// Any other self-extracting archive spellbook recognizes (Info-Zip,
+	// WinZip, InstallShield, WISE, ...)
 	WindowsInstallerTypeArchive WindowsInstallerType = "archive"
+	// 7-Zip SFX module with a 7z archive appended
+	WindowsInstallerTypeSevenZip WindowsInstallerType = "7zip"
+	// WinRAR SFX module with a RAR or zip archive appended
+	WindowsInstallerTypeWinRAR WindowsInstallerType = "winrar"
+	// Stub with a cabinet appended, such as RPG Maker XP/VX/VX Ace
+	// "compress game data" exports
+	WindowsInstallerTypeCab WindowsInstallerType = "cab"
+	// IExpress (wextract) package, cabinet stored as a resource. GameMaker
+	// Studio 1.x "single runtime executable" exports are these: they
+	// extract to a temporary folder and run the game from there.
+	WindowsInstallerTypeIExpress WindowsInstallerType = "iexpress"
+	// Clickteam Install Creator
+	WindowsInstallerTypeClickteam WindowsInstallerType = "clickteam"
 )
 
 // Contains information specific to native macOS executables

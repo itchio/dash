@@ -1,9 +1,5 @@
-github.com/basgys/goxml2json v1.1.0 h1:4ln5i4rseYfXNd86lGEB+Vi652IsIXIvggKM/BhUKVw=
-github.com/basgys/goxml2json v1.1.0/go.mod h1:wH7a5Np/Q4QoECFIU8zTQlZwZkrilY0itPfecMw41Dw=
 github.com/benbjohnson/clock v1.1.0 h1:Q92kusRqC1XV2MjkWETPvjJVqKetz1OzxZB7mHJLju8=
 github.com/benbjohnson/clock v1.1.0/go.mod h1:J11/hYXuz8f4ySSvYwY0FKfm+ezbsZBKZxNJlLklBHA=
-github.com/bitly/go-simplejson v0.5.0 h1:6IH+V8/tVMab511d5bn4M7EwGXZf9Hj6i2xSwkNEM+Y=
-github.com/bitly/go-simplejson v0.5.0/go.mod h1:cXHtHw4XUPsvGaxgjIAn8PhEWG9NfngEKAMDJEczWVA=
 github.com/certifi/gocertifi v0.0.0-20200211180108-c7c1fbc02894 h1:JLaf/iINcLyjwbtTsCJjc6rtlASgHeIJPrB6QmwURnA=
 github.com/certifi/gocertifi v0.0.0-20200211180108-c7c1fbc02894/go.mod h1:sGbDF6GwGcLpkNXPUTkMRoywsNa/ol15pxFe6ERfguA=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
@@ -59,8 +55,8 @@ github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51 h1:jipXtdsZClshNO8
 github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51/go.mod h1:iLS+Eq+S26jTC4pbdDH6N5XtDqrjb4IOXtjj1HCzbuk=
 github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf h1:UeDwcZg6FftcbFWUqOCqCjWjB7e+pecC6wgLpZA9i4U=
 github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf/go.mod h1:ABzRyUqsKcRQxAKFp7uac7C4z4Y0C1T0uDvBoDVx77g=
-github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c h1:lXQ96h2NYErL8rYnxtUImcC9quh8y6HGZkKwKP38PPA=
-github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c/go.mod h1:A7gJOzzxHbG7bfBrabE95NH8M+5sAC/9iWHNq3oMLVI=
+github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608 h1:vbJzLwS5ifiXtrquSGGBOxfuR/4iwvT+Y0ZKjYZ4Okk=
+github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608/go.mod h1:5myIRqGAjat0gT3qiK43Cv1puZhxn9bi17+JZFpJQMo=
 github.com/itchio/screw v0.0.0-20260221011136-e674b460b040 h1:2nzurbZLgBSqNyLlIuO2iClpivQ7L5DX75kvCMqZ9e0=
 github.com/itchio/screw v0.0.0-20260221011136-e674b460b040/go.mod h1:YwbHHVRIS/rkm1kHtab0wnYLWxiJXUdvr4oOYlv1dOA=
 github.com/itchio/spellbook v0.0.0-20260223022740-4f847d058148 h1:4YU/DxYjdK4kwHaOdzAdJ6J/svqEqtD8aLnQ/vWQFZE=

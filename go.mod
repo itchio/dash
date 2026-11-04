@@ -6,7 +6,7 @@ require (
 	github.com/itchio/arkive v0.0.0-20260424164943-5eabdbdce5c8
 	github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4
 	github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf
-	github.com/itchio/pelican v0.0.0-20260515051627-03ecc612cf1c
+	github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608
 	github.com/itchio/spellbook v0.0.0-20260223022740-4f847d058148
 	github.com/itchio/wizardry v0.0.0-20260222230103-ec734b409e9c
 	github.com/pkg/errors v0.9.1
@@ -16,7 +16,6 @@ require (
 )
 
 require (
-	github.com/basgys/goxml2json v1.1.0 // indirect
 	github.com/certifi/gocertifi v0.0.0-20200211180108-c7c1fbc02894 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/efarrer/iothrottler v0.0.1 // indirect
