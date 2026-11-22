@@ -53,8 +53,8 @@ github.com/itchio/httpkit v0.0.0-20261014001543-804157f68bf3 h1:Hr0zGbUvURlg610W
 github.com/itchio/httpkit v0.0.0-20261014001543-804157f68bf3/go.mod h1:/eodDULLFn8KrWObOlT7AF5LcFi8Ff1beHXcwdLMe5g=
 github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51 h1:jipXtdsZClshNO8fKK8ItiVyqE9bKA09as+qjW/yjG0=
 github.com/itchio/kompress v0.0.0-20200301155538-5c2eecce9e51/go.mod h1:iLS+Eq+S26jTC4pbdDH6N5XtDqrjb4IOXtjj1HCzbuk=
-github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf h1:UeDwcZg6FftcbFWUqOCqCjWjB7e+pecC6wgLpZA9i4U=
-github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf/go.mod h1:ABzRyUqsKcRQxAKFp7uac7C4z4Y0C1T0uDvBoDVx77g=
+github.com/itchio/lake v0.0.0-20261122050844-c3a57f1b367d h1:qyGau50rMXO+7jFwXkb2LMlGbloaLapOaINvGhvKLg0=
+github.com/itchio/lake v0.0.0-20261122050844-c3a57f1b367d/go.mod h1:JFoGOaPYTRbW2DaDKFOPG9ikZzeJoTX1Z15l9s6bqGQ=
 github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608 h1:vbJzLwS5ifiXtrquSGGBOxfuR/4iwvT+Y0ZKjYZ4Okk=
 github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608/go.mod h1:5myIRqGAjat0gT3qiK43Cv1puZhxn9bi17+JZFpJQMo=
 github.com/itchio/screw v0.0.0-20260221011136-e674b460b040 h1:2nzurbZLgBSqNyLlIuO2iClpivQ7L5DX75kvCMqZ9e0=

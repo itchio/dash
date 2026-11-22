@@ -22,7 +22,7 @@ statically analyze a game's files for platform classification.
 ## Usage
 
 ```go
-verdict, err := dash.Configure("path/to/game", dash.ConfigureParams{
+verdict, err := dash.Configure(ctx, "path/to/game", dash.ConfigureParams{
 	Consumer: consumer,
 })
 

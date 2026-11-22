@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/itchio/arkive v0.0.0-20260424164943-5eabdbdce5c8
 	github.com/itchio/headway v0.0.0-20251229214354-da882c8b5dd4
-	github.com/itchio/lake v0.0.0-20261014002703-c21855d4ccaf
+	github.com/itchio/lake v0.0.0-20261122050844-c3a57f1b367d
 	github.com/itchio/pelican v0.0.0-20261104233745-f575d787f608
 	github.com/itchio/spellbook v0.0.0-20260223022740-4f847d058148
 	github.com/itchio/wizardry v0.0.0-20260222230103-ec734b409e9c

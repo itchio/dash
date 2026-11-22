@@ -1,6 +1,7 @@
 package dash
 
 import (
+	"context"
 	"io"
 	"strings"
 
@@ -20,6 +21,8 @@ type engineDetector interface {
 
 // scan is the state shared by Configure and the engine detectors.
 type scan struct {
+	// checked on every open, so detectors stop reading once it is cancelled
+	ctx       context.Context
 	params    ConfigureParams
 	consumer  *state.Consumer
 	pool      lake.Pool
@@ -53,8 +56,9 @@ type scan struct {
 // the detectors look for.
 const tailWindow = 65535 + 22
 
-func newScan(params ConfigureParams, pool lake.Pool, container *tlc.Container) *scan {
+func newScan(ctx context.Context, params ConfigureParams, pool lake.Pool, container *tlc.Container) *scan {
 	s := &scan{
+		ctx:          ctx,
 		params:       params,
 		consumer:     params.Consumer,
 		pool:         pool,
@@ -150,6 +154,9 @@ func (s *scan) hasDir(lowerPath string) bool {
 // budget is per file, not per open: MaxProbeBytes caps the distinct bytes
 // every sniffer and detector together may read from one file.
 func (s *scan) open(index int) (*probeReader, error) {
+	if err := s.ctx.Err(); err != nil {
+		return nil, err
+	}
 	r, err := s.pool.GetReadSeeker(int64(index))
 	if err != nil {
 		return nil, errors.Wrapf(err, "opening %s", s.container.Files[index].Path)
@@ -167,6 +174,9 @@ func (s *scan) open(index int) (*probeReader, error) {
 
 // openRaw returns an unbudgeted reader, for probes that set their own limit.
 func (s *scan) openRaw(index int) (io.ReadSeeker, int64, error) {
+	if err := s.ctx.Err(); err != nil {
+		return nil, 0, err
+	}
 	r, err := s.pool.GetReadSeeker(int64(index))
 	if err != nil {
 		return nil, 0, errors.Wrapf(err, "opening %s", s.container.Files[index].Path)

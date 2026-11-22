@@ -193,7 +193,7 @@ func Configure(ctx context.Context, root string, params ConfigureParams) (*Verdi
 		return nil, err
 	}
 	defer pool.Close()
-	verdict, err := ConfigureContainer(container, pool, params)
+	verdict, err := ConfigureContainer(ctx, container, pool, params)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +221,7 @@ func openConfigurePool(ctx context.Context, root string, params ConfigureParams)
 // and pool, such as uploaders analyzing archive entries. params.Filter is
 // ignored. The verdict has no BasePath, so FixPermissions can't use it and
 // Filter can't probe executables for elevation.
-func ConfigureContainer(container *tlc.Container, pool lake.Pool, params ConfigureParams) (*Verdict, error) {
+func ConfigureContainer(ctx context.Context, container *tlc.Container, pool lake.Pool, params ConfigureParams) (*Verdict, error) {
 	if container == nil || pool == nil {
 		return nil, errors.New("container and pool are required")
 	}
@@ -234,7 +234,7 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 	}
 	verdict := &Verdict{}
 
-	s := newScan(params, pool, container)
+	s := newScan(ctx, params, pool, container)
 	s.candidates = make([]*Candidate, 0)
 
 	// lowercased path of each .app bundle's main executable, when its
@@ -242,6 +242,9 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 	bundleExecutables := make(map[*Candidate]string)
 
 	for _, d := range container.Dirs {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		lowerPath := strings.ToLower(d.Path)
 		if strings.HasSuffix(lowerPath, ".app") {
 			plistPath := lowerPath + "/contents/info.plist"
@@ -271,6 +274,9 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 	}
 
 	for fileIndex, f := range container.Files {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		verdict.TotalSize += f.Size
 		if isBlacklistedExt(f.Path) {
 			continue
@@ -365,11 +371,17 @@ func ConfigureContainer(container *tlc.Container, pool lake.Pool, params Configu
 		if err := d.detect(s); err != nil {
 			return nil, errors.Wrapf(err, "engine detector %T", d)
 		}
+		// detectors treat a failed open as a miss, so ask after each one
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 	}
 
 	s.resolveAppRunLinks()
 	if params.DeepProbe {
-		s.deepProbe()
+		if err := s.deepProbe(ctx); err != nil {
+			return nil, err
+		}
 	}
 
 	verdict.Candidates = s.candidates
@@ -419,9 +431,13 @@ func (s *scan) resolveAppRunLinks() {
 }
 
 // deepProbe fills the native dependency records. Failures are logged, not
-// fatal: a candidate without a record is still a candidate.
-func (s *scan) deepProbe() {
+// fatal: a candidate without a record is still a candidate. The only error
+// is ctx's.
+func (s *scan) deepProbe(ctx context.Context) error {
 	for _, c := range s.candidates {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		index, ok := s.file(strings.ToLower(c.Path))
 		if !ok {
 			continue
@@ -473,6 +489,8 @@ func (s *scan) deepProbe() {
 			s.loveVersionFromResource(c)
 		}
 	}
+	// a cancel during the last probe only shows up as a logged read error
+	return ctx.Err()
 }
 
 type FixPermissionsParams struct {

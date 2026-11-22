@@ -41,30 +41,34 @@ func ScanLaunchTargets(ctx context.Context, root string, params ConfigureParams)
 		return nil, err
 	}
 	defer pool.Close()
-	return ScanLaunchTargetsContainer(container, pool, params)
+	return ScanLaunchTargetsContainer(ctx, container, pool, params)
 }
 
 // ScanLaunchTargetsContainer is ScanLaunchTargets for a container and pool the
 // caller already has. See ConfigureContainer.
-func ScanLaunchTargetsContainer(container *tlc.Container, pool lake.Pool, params ConfigureParams) ([]LaunchTarget, error) {
+func ScanLaunchTargetsContainer(ctx context.Context, container *tlc.Container, pool lake.Pool, params ConfigureParams) ([]LaunchTarget, error) {
 	params.DeepProbe = true
 	if params.Consumer == nil {
 		params.Consumer = &state.Consumer{}
 	}
-	verdict, err := ConfigureContainer(container, pool, params)
+	verdict, err := ConfigureContainer(ctx, container, pool, params)
 	if err != nil {
 		return nil, err
 	}
-	return launchTargetsFromVerdict(verdict, container, pool, params.Consumer), nil
+	return launchTargetsFromVerdict(ctx, verdict, container, pool, params.Consumer)
 }
 
-func launchTargetsFromVerdict(verdict *Verdict, container *tlc.Container, pool lake.Pool, consumer *state.Consumer) []LaunchTarget {
+func launchTargetsFromVerdict(ctx context.Context, verdict *Verdict, container *tlc.Container, pool lake.Pool, consumer *state.Consumer) ([]LaunchTarget, error) {
 	indices := make(map[string]int64, len(container.Files))
 	for i, f := range container.Files {
 		indices[f.Path] = int64(i)
 	}
 	targets := make([]LaunchTarget, 0, len(verdict.Candidates))
 	for _, c := range verdict.Candidates {
+		// each candidate is hashed in full
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
 		target := LaunchTarget{
 			Path: c.Path, Depth: c.Depth, Flavor: c.Flavor, Arch: c.Arch,
 			Helper: c.Helper, Engine: c.Engine, LinuxInfo: c.LinuxInfo,
@@ -72,14 +76,18 @@ func launchTargetsFromVerdict(verdict *Verdict, container *tlc.Container, pool l
 		}
 		if index, ok := indices[c.Path]; ok {
 			target.Size = container.Files[index].Size
-			target.Sha256 = launchTargetHash(pool, index, c.Path, consumer)
+			target.Sha256 = launchTargetHash(ctx, pool, index, c.Path, consumer)
 		}
 		targets = append(targets, target)
 	}
-	return targets
+	// a cancel during the last hash only shows up as an empty Sha256
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	return targets, nil
 }
 
-func launchTargetHash(pool lake.Pool, index int64, path string, consumer *state.Consumer) string {
+func launchTargetHash(ctx context.Context, pool lake.Pool, index int64, path string, consumer *state.Consumer) string {
 	r, err := pool.GetReadSeeker(index)
 	if err != nil {
 		consumer.Warnf("Couldn't open %s for hashing: %v", path, err)
@@ -91,9 +99,22 @@ func launchTargetHash(pool lake.Pool, index int64, path string, consumer *state.
 		return ""
 	}
 	hasher := sha256.New()
-	if _, err := io.Copy(hasher, r); err != nil {
+	if _, err := io.Copy(hasher, &ctxReader{ctx: ctx, r: r}); err != nil {
 		consumer.Warnf("While hashing %s: %v", path, err)
 		return ""
 	}
 	return fmt.Sprintf("%x", hasher.Sum(nil))
+}
+
+// ctxReader fails reads once ctx is cancelled.
+type ctxReader struct {
+	ctx context.Context
+	r   io.Reader
+}
+
+func (cr *ctxReader) Read(p []byte) (int, error) {
+	if err := cr.ctx.Err(); err != nil {
+		return 0, err
+	}
+	return cr.r.Read(p)
 }

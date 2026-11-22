@@ -2,6 +2,7 @@ package dash
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -21,7 +22,7 @@ func TestScanDirectoryIndexes(t *testing.T) {
 		},
 		Dirs: []*tlc.Dir{{Path: "Game"}, {Path: "Empty/Nested"}},
 	}
-	s := newScan(ConfigureParams{}, nil, container)
+	s := newScan(context.Background(), ConfigureParams{}, nil, container)
 
 	if got := s.originalDir("game/data"); got != "Game/Data" {
 		t.Fatalf("originalDir = %q", got)
@@ -46,7 +47,7 @@ func TestScanCandidateIndexFollowsAppends(t *testing.T) {
 		{Path: "App.app/Contents/MacOS/Helper"},
 		{Path: "lib/x86_64/game"},
 	}}
-	s := newScan(ConfigureParams{}, nil, container)
+	s := newScan(context.Background(), ConfigureParams{}, nil, container)
 
 	first := s.addFileCandidate(0, FlavorNativeMacos, nil)
 	if s.candidateAt("app.app/contents/macos/game") != first {
@@ -83,7 +84,7 @@ func TestReadBundleExecutableSizeCap(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	container, err := tlc.WalkDir(root, tlc.WalkOpts{Filter: tlc.KeepAllFilter})
+	container, err := tlc.WalkDir(context.Background(), root, tlc.WalkOpts{Filter: tlc.KeepAllFilter})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,5 +106,24 @@ func TestReadBundleExecutableSizeCap(t *testing.T) {
 				t.Fatalf("big.plist: expected size error, got exe=%q err=%v", exe, err)
 			}
 		}
+	}
+}
+
+func TestConfigureContainerCancelled(t *testing.T) {
+	root := "testdata/linux-sdl"
+	container, err := tlc.WalkDir(context.Background(), root, tlc.WalkOpts{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pool, err := pools.New(context.Background(), container, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := ConfigureContainer(ctx, container, pool, ConfigureParams{}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v, want context.Canceled", err)
 	}
 }

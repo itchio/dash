@@ -84,7 +84,10 @@ func TestLaunchTargetJSONContract(t *testing.T) {
 		Engine:    &EngineInfo{Engine: Engine("test"), Version: "1", Details: map[string]any{"key": "value"}},
 		LinuxInfo: &LinuxInfo{}, WindowsInfo: &WindowsInfo{}, MacosInfo: &MacosInfo{},
 	}}}
-	targets := launchTargetsFromVerdict(verdict, &tlc.Container{}, nil, &state.Consumer{})
+	targets, err := launchTargetsFromVerdict(context.Background(), verdict, &tlc.Container{}, nil, &state.Consumer{})
+	if err != nil {
+		t.Fatal(err)
+	}
 	data, err := json.Marshal(targets)
 	if err != nil {
 		t.Fatal(err)
@@ -132,13 +135,13 @@ func TestLaunchTargetHashRewindsAndWarns(t *testing.T) {
 	reader := strings.NewReader("game")
 	_, _ = reader.Seek(3, io.SeekStart)
 	pool := &reportPool{reader: reader}
-	hash := launchTargetHash(pool, 0, "game", &state.Consumer{})
+	hash := launchTargetHash(context.Background(), pool, 0, "game", &state.Consumer{})
 	if hash != fmt.Sprintf("%x", sha256.Sum256([]byte("game"))) {
 		t.Fatalf("hash did not read whole file: %s", hash)
 	}
 	pool.reader = brokenReportReader{strings.NewReader("game")}
 	warned := false
-	hash = launchTargetHash(pool, 0, "game", &state.Consumer{OnMessage: func(_, _ string) { warned = true }})
+	hash = launchTargetHash(context.Background(), pool, 0, "game", &state.Consumer{OnMessage: func(_, _ string) { warned = true }})
 	if !warned || hash != "" {
 		t.Fatalf("failed hash: warned=%v hash=%s", warned, hash)
 	}
@@ -166,7 +169,7 @@ func TestLaunchTargetsContainerSelectionAndOwnership(t *testing.T) {
 	}
 	defer pool.Close()
 	tracked := &reportPool{Pool: pool}
-	targets, err := ScanLaunchTargetsContainer(container, &ownershipPool{Pool: pool, tracker: tracked}, ConfigureParams{
+	targets, err := ScanLaunchTargetsContainer(context.Background(), container, &ownershipPool{Pool: pool, tracker: tracked}, ConfigureParams{
 		Filter: func(string) tlc.FilterResult { t.Fatal("must not re-filter container"); return tlc.FilterIgnore },
 	})
 	if err != nil {
@@ -267,9 +270,12 @@ func TestLaunchTargetPreservesSizeWhenOpenFails(t *testing.T) {
 	container := &tlc.Container{Files: []*tlc.File{{Path: "game.exe", Size: 123}}}
 	verdict := &Verdict{Candidates: []*Candidate{{Path: "game.exe", Depth: 1, Flavor: FlavorNativeWindows}}}
 	warned := false
-	targets := launchTargetsFromVerdict(verdict, container, unavailableReportPool{}, &state.Consumer{
+	targets, err := launchTargetsFromVerdict(context.Background(), verdict, container, unavailableReportPool{}, &state.Consumer{
 		OnMessage: func(_, _ string) { warned = true },
 	})
+	if err != nil {
+		t.Fatal(err)
+	}
 	if !warned || len(targets) != 1 || targets[0].Size != 123 || targets[0].Sha256 != "" {
 		t.Fatalf("size lost on open failure: warned=%v targets=%+v", warned, targets)
 	}
