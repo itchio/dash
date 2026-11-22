@@ -1,0 +1,5 @@
+; main loop
+        org 32768
+start:  ld a, 2
+        call 5633
+        ret

@@ -241,6 +241,13 @@ func Test_ROM(t *testing.T) {
 		"s.cue":  {"psx", true},
 		"t.chd":  {"", false},
 		"u.bin":  {"md", true},
+		"y.tap":  {"zx", true},
+		"y2.tap": {"c64", true},
+		"z.tzx":  {"zx", true},
+		"z2.z80": {"zx", true},
+		"z3.z80": {"zx", true},
+		"z4.sna": {"zx", true},
+		"z5.szx": {"zx", true},
 		// Analogue Pocket ROMs are recognized by their logo, not the extension
 		"v.pocket": {"pocket", true},
 		"w.pocket": {"gb", true},
@@ -263,6 +270,12 @@ func Test_ROM(t *testing.T) {
 	assert.Nil(t, m["readme.md"], "markdown is not a Mega Drive ROM")
 	assert.Nil(t, m["junk.bin"], "a .bin without a Sega header is nothing")
 	assert.Nil(t, m["big.a26"], "too big for an Atari cartridge")
+	assert.Nil(t, m["fake.tap"], "a tape whose first block has a bad checksum is nothing")
+	assert.Nil(t, m["fake.z80"], "a .z80 with an extra header of no known length is nothing")
+	assert.Nil(t, m["short.z80"], "a .z80 that ends inside its extra header is nothing")
+	assert.Nil(t, m["flat.z80"], "an uncompressed .z80 without 48K of memory is nothing")
+	assert.Nil(t, m["source.z80"], "Z80 assembly source is not a snapshot")
+	assert.Nil(t, m["fake.sna"], "an Amstrad CPC snapshot is not a Spectrum one")
 	assert.Len(t, m, len(expected))
 }
 
@@ -270,14 +283,17 @@ func Test_ROMFilter(t *testing.T) {
 	v, _ := configureEngine(t, "rom")
 
 	desktop := v.Filter(makeConsumer(t), dash.FilterParams{OS: "windows", Arch: "amd64"})
-	assert.Len(t, desktop.Candidates, 25, "with nothing else, every ROM stays")
+	assert.Len(t, desktop.Candidates, 32, "with nothing else, every ROM stays")
 
 	snes := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{"rom:snes"}})
 	assert.ElementsMatch(t, []string{"b.sfc", "b2.smc"}, candidatePaths(snes))
 
 	// listing "rom" without a system means every system
 	all := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{dash.FlavorROM}})
-	assert.Len(t, all.Candidates, 25)
+	assert.Len(t, all.Candidates, 32)
+
+	zx := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{"rom:zx"}})
+	assert.ElementsMatch(t, []string{"y.tap", "z.tzx", "z2.z80", "z3.z80", "z4.sna", "z5.szx"}, candidatePaths(zx))
 
 	pocket := v.Filter(makeConsumer(t), dash.FilterParams{OS: "linux", Arch: "arm64", Runtimes: []dash.Flavor{"rom:pocket"}})
 	assert.ElementsMatch(t, []string{"v.pocket", "x.gb"}, candidatePaths(pocket))

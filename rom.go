@@ -52,7 +52,7 @@ import (
 // header, since it is also Markdown; ".bin" only with a Sega header.
 //
 // Details: "system" (nes, snes, gb, gbc, pocket, gba, nds, 3ds, md, 32x,
-// sms, gg, pce, lynx, ngp, a26, c64, amiga, n64, psx, ps2, psp, saturn,
+// sms, gg, pce, lynx, ngp, a26, c64, zx, amiga, n64, psx, ps2, psp, saturn,
 // segacd, dreamcast, or "" for a disc image whose system could not be read),
 // "confidence" ("ext" when the header was absent or not checked),
 // "format" (for disc images: "cue", "iso", "chd"; for 3DS: "cia", "3dsx",
@@ -91,6 +91,11 @@ var romExts = map[string]romCheck{
 	".d64":    checkD64,
 	".prg":    extOnly("c64"),
 	".t64":    checkT64,
+	".tap":    checkTAP,
+	".tzx":    checkTZX,
+	".z80":    checkZ80,
+	".sna":    checkSNA,
+	".szx":    checkSZX,
 	".adf":    checkADF,
 	".z64":    checkN64,
 	".n64":    checkN64,
@@ -402,6 +407,96 @@ func checkT64(s *scan, index int, _ string) (string, bool, bool) {
 	head := s.readHead(index, 32)
 	if bytes.HasPrefix(head, []byte("C64")) {
 		return "c64", true, true
+	}
+	return "", false, false
+}
+
+// checkTAP tells the two tape formats that share the extension apart: a
+// C64 tape has a signature, a ZX Spectrum one is a run of blocks, each a
+// length and that many bytes that XOR to zero.
+func checkTAP(s *scan, index int, _ string) (string, bool, bool) {
+	head := s.readHead(index, 12)
+	if string(head) == "C64-TAPE-RAW" {
+		return "c64", true, true
+	}
+	if len(head) < 4 {
+		return "", false, false
+	}
+	size := int(binary.LittleEndian.Uint16(head))
+	if size < 2 {
+		return "", false, false
+	}
+	block := s.readHead(index, 2+size)
+	if len(block) != 2+size {
+		return "", false, false
+	}
+	var sum byte
+	for _, b := range block[2:] {
+		sum ^= b
+	}
+	if sum != 0 {
+		return "", false, false
+	}
+	return "zx", true, true
+}
+
+func checkTZX(s *scan, index int, _ string) (string, bool, bool) {
+	head := s.readHead(index, 8)
+	if string(head) == "ZXTape!\x1a" {
+		return "zx", true, true
+	}
+	return "", false, false
+}
+
+// checkZ80 reads the snapshot's version from its header. Versions 2 and 3
+// leave the first header's PC at zero and say how long the extra header
+// after it is. Version 1 is the header and 48K of memory, or compressed
+// memory closed by an end marker.
+func checkZ80(s *scan, index int, _ string) (string, bool, bool) {
+	head := s.readHead(index, 32)
+	if len(head) < 32 {
+		return "", false, false
+	}
+	size := s.container.Files[index].Size
+	if head[6] == 0 && head[7] == 0 {
+		extra := binary.LittleEndian.Uint16(head[30:])
+		switch extra {
+		case 23, 54, 55:
+			if size >= 32+int64(extra) {
+				return "zx", true, true
+			}
+		}
+		return "", false, false
+	}
+	flags := head[12]
+	if flags == 0xff {
+		flags = 1
+	}
+	if flags&0x20 == 0 {
+		if size == 30+48<<10 {
+			return "zx", true, true
+		}
+		return "", false, false
+	}
+	if string(s.readTail(index, 4)) == "\x00\xed\xed\x00" {
+		return "zx", true, true
+	}
+	return "", false, false
+}
+
+// checkSNA accepts the sizes of a 48K snapshot and the two 128K ones.
+func checkSNA(s *scan, index int, _ string) (string, bool, bool) {
+	switch s.container.Files[index].Size {
+	case 49179, 131103, 147487:
+		return "zx", true, true
+	}
+	return "", false, false
+}
+
+func checkSZX(s *scan, index int, _ string) (string, bool, bool) {
+	head := s.readHead(index, 4)
+	if string(head) == "ZXST" {
+		return "zx", true, true
 	}
 	return "", false, false
 }
